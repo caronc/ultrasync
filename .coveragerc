@@ -1,0 +1,14 @@
+[run]
+disable_warnings = no-data-collected
+branch = True
+source =
+    ultrasync
+
+[paths]
+source =
+   ultrasync
+   .tox/*/lib/python*/site-packages/ultrasync
+   .tox/pypy/site-packages/ultrasync
+
+[report]
+show_missing = True
