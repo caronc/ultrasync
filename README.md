@@ -3,6 +3,8 @@
 
 This is just a small library and accompaning CLI tool I wrote to allow me to interface with it.
 
+[![Paypal](https://img.shields.io/badge/paypal-donate-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=MHANV39UZNQ5E)
+
 ## How Does It Work?
 1. First you need to install it; this part is easy:
 ```bash
