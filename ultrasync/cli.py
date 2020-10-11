@@ -26,6 +26,7 @@
 import click
 import logging
 import platform
+import json
 import sys
 from os.path import isfile
 from os.path import expanduser
@@ -85,6 +86,7 @@ def print_version_msg():
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('--config', '-c', default=None, type=str, metavar='FILE',
               help='Specify configuration file.')
+@click.option('--details', '-d', is_flag=True, help='Print status')
 @click.option('--scene', '-s', type=str,
               metavar='SCENE',
               help='Specify the alarm scene to change to. Possible values '
@@ -93,7 +95,7 @@ def print_version_msg():
 @click.option('--verbose', '-v', count=True)
 @click.option('--version', '-V', is_flag=True,
               help='Display the version of the ultrasync library and exit.')
-def main(config, scene, verbose, version):
+def main(config, scene, details, verbose, version):
     """
     Wrapper to ultrasyncn library.
     """
@@ -155,6 +157,10 @@ def main(config, scene, verbose, version):
         logger.error(
             'Could not load ultrasync configuration: {}'.format(config))
         sys.exit(1)
+
+    if details:
+        print(json.dumps(usync.details(), indent=2, sort_keys=True))
+        sys.exit(0)
 
     if scene and not usync.set(scene):
         # Failed to set scene

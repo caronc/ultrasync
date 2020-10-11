@@ -61,4 +61,4 @@ def test_sequence(mock_post):
     uobj._authenticated = True
     uobj.session_id = 'ABCD1234'
 
-    assert isinstance(uobj._sequence(), dict)
+    assert uobj._sequence() is True

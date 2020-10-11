@@ -50,7 +50,7 @@ def test_login(mock_post):
 
     # Simulate a valid login return
     with open(join(TEST_VAR_DIR, 'login.cgi-okay'), 'rb') as f:
-        robj.content = str(f.read().decode('utf-8'))
+        robj.content = f.read()
     robj.status_code = requests.codes.ok
 
     # Assign our response object to our mocked instance of requests
