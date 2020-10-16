@@ -92,12 +92,14 @@ def print_version_msg():
               help='Specify the alarm scene to change to. Possible values '
               'are "{}", and "{}".'.format(
                   '", "'.join(ALARM_SCENES[:-1]), ALARM_SCENES[-1]))
+@click.option('--debug-dump', is_flag=True,
+              help='Dump tracing files for comparison purposes.')
 @click.option('--verbose', '-v', count=True)
 @click.option('--version', '-V', is_flag=True,
               help='Display the version of the ultrasync library and exit.')
-def main(config, scene, details, verbose, version):
+def main(config, debug_dump, scene, details, verbose, version):
     """
-    Wrapper to ultrasyncn library.
+    Wrapper to ultrasync library.
     """
     # Note: Click ignores the return values of functions it wraps, If you
     #       want to return a specific error code, you must call sys.exit()
@@ -158,14 +160,29 @@ def main(config, scene, details, verbose, version):
             'Could not load ultrasync configuration: {}'.format(config))
         sys.exit(1)
 
+    # toggles to true if at least one item is actioned
+    actioned = False
+
     if details:
         print(json.dumps(usync.details(), indent=2, sort_keys=True))
-        sys.exit(0)
+        actioned = True
 
-    if scene and not usync.set(scene):
-        # Failed to set scene
-        logger.error(
-            'Could not load set scene to: {}'.format(scene))
+    if debug_dump:
+        usync.debug_dump()
+        actioned = True
+
+    if scene:
+        if not usync.set(scene):
+            # Failed to set scene
+            logger.error(
+                'Could not load set scene to: {}'.format(scene))
+            sys.exit(1)
+        actioned = True
+
+    if not actioned:
+        # Print help
+        logger.error('No action was specified.')
+        print_help_msg(main)
         sys.exit(1)
 
     # else:  We're good!

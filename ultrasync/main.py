@@ -26,12 +26,14 @@
 import requests
 import json
 import re
+import os
 from datetime import datetime
 from datetime import timedelta
 from .common import AlarmScene
 from .common import ALARM_SCENES
 from .config import UltraSyncConfig
 from urllib.parse import unquote
+from .logger import logger
 
 
 class UltraSync(UltraSyncConfig):
@@ -39,26 +41,7 @@ class UltraSync(UltraSyncConfig):
     A wrapper to the UltraSync Alarm Panel
     """
 
-    # Login URL
-    url_login = 'http://{}/login.cgi'
-
-    # Logout URL
-    url_logout = 'http://{}/logout.cgi'
-
-    # Status URL
-    url_status = 'http://{}/user/status.json'
-
-    # Area URL
-    url_areas = 'http://{}/user/area.htm'
-
-    # Zones URL
-    url_zones = 'http://{}/user/zones.htm'
-
-    # Used to acquire sequence
-    url_sequence = 'http://{}/user/seq.json'
-
-    # Used set macro
-    url_macro = 'http://{}/user/keyfunction.cgi'
+    panel_encoding = 'utf-8'
 
     def __init__(self, *args, **kwargs):
         """
@@ -93,6 +76,9 @@ class UltraSync(UltraSyncConfig):
         # Track the time our information was polled from our panel
         self.__updated = None
 
+        # Track the Panel URL path
+        self.__panel_url_path = None
+
     def login(self):
         """
         Performs login to UltraSync (which then redirects to area.htm)
@@ -102,26 +88,16 @@ class UltraSync(UltraSyncConfig):
         self._authenticated = False
         self.session_id = None
 
-        headers = {
-            'Referer': 'http://{}/login.htm'.format(self.host),
-            'User-Agent': self.user_agent
-        }
         payload = {
             'lgname': self.user,
             'lgpin': self.pin,
         }
 
-        request = self.session.post(
-            self.url_login.format(self.host),
-            data=payload,
-            headers=headers,
-        )
-
-        if request.status_code != requests.codes.ok:
-            # We failed to authenticate
+        response = self.__get('/login.cgi', payload=payload, is_json=False)
+        if not response:
+            logger.error('Failed to authenticate to {}'.format(self.host))
             return False
 
-        #
         #
         # Get our Session Identifier
         #
@@ -129,20 +105,38 @@ class UltraSync(UltraSyncConfig):
         #  function getSession(){return "A2D6C62695D705D8";}
         match = re.search(
             r'function getSession\(\)[^"]+"(?P<session>[^"]+)".*',
-            request.content.decode('utf-8'), re.M)
+            response, re.M)
         if not match:
             # No match and/or bad login
+            logger.error('Failed to authenticate to {}'.format(self.host))
             return False
 
         # Store our session
         self.session_id = match.group('session')
 
-        self._authenticated = request.status_code == requests.codes.ok \
-            and self.session_id
-
-        if not self._areas(request=request):
+        #
+        # Get our Panel URL Path
+        #
+        # It is parsed from a reference like
+        #   script src="/v_ZW_03.02-C/status.js"
+        #                     ^
+        #                     |
+        match = re.search(
+            r'script src="(?P<path>/?[^/]+).*', response, re.M)
+        if not match:
             # No match and/or bad login
             return False
+
+        # Store our path
+        self.__panel_url_path = match.group('path')
+
+        if not self._areas(response=response):
+            # No match and/or bad login
+            logger.error('Failed to authenticate to {}'.format(self.host))
+            return False
+
+        # Set our authentication flag
+        self._authenticated = True if self.session_id else False
 
         # We're good
         return self._authenticated
@@ -154,24 +148,10 @@ class UltraSync(UltraSyncConfig):
         """
         if not self._authenticated:
             # We're done
-            return
+            return True
 
-        headers = {
-            'Referer': 'http://{}/login.htm'.format(self.host),
-            'User-Agent': self.user_agent
-        }
-
-        payload = {
-            'sess': self.session_id,
-        }
-
-        self.session.post(
-            self.url_logout.format(self.host),
-            data=payload,
-            headers=headers,
-        )
-
-        # Reset our variables
+        # Reset our variables reguardless if we're successfully able to log
+        # out or not
         self._authenticated = False
         self.session_id = None
 
@@ -185,7 +165,85 @@ class UltraSync(UltraSyncConfig):
         self._zone_sequence = None
         self._zone_status = None
 
-    def set(self, state=AlarmScene.DISARMED):
+        # Perform a logout
+        response = self.__get('/logout.cgi', is_json=False)
+        if not response:
+            logger.error('Failed to authenticate to {}'.format(self.host))
+            return False
+
+        return True
+
+    def debug_dump(self, path=None, mode=0o755):
+        """
+        Useful for checking for differences in alarm readings over time.
+
+        """
+        if path is None:
+            path = datetime.now().strftime('%Y%m%d%H%M%S.ultrasync-dump')
+
+        # Begin capturing data
+        if not self._authenticated and not self.login():
+            return False
+
+        logger.info('Performing a debug dump to: {}'.format(path))
+        os.mkdir(path, mode=mode)
+
+        urls = {
+            # status.json - Bank 0
+            'status.0.json': {
+                'path': '/user/status.json',
+                'payload': {
+                    'sess': self.session_id,
+                    'arsel': 0,
+                },
+            },
+            # status.json - Bank 1
+            'status.1.json': {
+                'path': '/user/status.json',
+                'payload': {
+                    'sess': self.session_id,
+                    'arsel': 1,
+                },
+            },
+            # Area URL
+            'area.htm': {
+                'path': '/user/area.htm',
+            },
+
+            # Zones URL
+            'zones.html': {
+                'path': '/user/zones.htm',
+            },
+
+            # Used to acquire sequence
+            'seq.json': {
+                'path': '/user/seq.json',
+            },
+
+            # Additional useful queries
+            'master.js': {
+                'path': '{}/master.js'.format(self.__panel_url_path),
+                'method': 'GET'
+            },
+            'status.js': {
+                'path': '{}/status.js'.format(self.__panel_url_path),
+                'method': 'GET'
+            }
+        }
+
+        for to_file, kwargs in urls.items():
+
+            response = self.__get(is_json=False, **kwargs)
+            if not response:
+                continue
+
+            with open(os.path.join(path, to_file), 'w',
+                      encoding=self.panel_encoding) as fp:
+                # Write our content to disk
+                _bytes = fp.write(response)
+                logger.info('Wrote {} bytes to {}'.format(_bytes, to_file))
+
+    def set(self, area_bank=0, state=AlarmScene.DISARMED):
         """
         Sets Alarm Scene
         """
@@ -195,14 +253,9 @@ class UltraSync(UltraSyncConfig):
         if state not in ALARM_SCENES:
             return False
 
-        headers = {
-            'Referer': self.url_login.format(self.host),
-            'User-Agent': self.user_agent
-        }
-
         payload = {
             'sess': self.session_id,
-            'start': 0,
+            'start': int(area_bank),
             'mask': 1,
         }
 
@@ -221,23 +274,9 @@ class UltraSync(UltraSyncConfig):
                 'fnum': 0,
             })
 
-        request = self.session.post(
-            self.url_macro.format(self.host),
-            data=payload,
-            headers=headers,
-        )
-
-        if request.status_code != requests.codes.ok:
+        response = self.__get('/user/keyfunction.cgi', payload=payload)
+        if not response:
             return False
-
-        try:
-            response = json.loads(request.content.decode('utf-8'))
-
-        except (AttributeError, TypeError, ValueError):
-            # ValueError = request.content is Unparsable
-            # TypeError = request.content is None
-            # AttributeError = r is None
-            response = None
 
         return response
 
@@ -317,40 +356,27 @@ class UltraSync(UltraSyncConfig):
 
         return response
 
-    def _areas(self, request=None):
+    def _areas(self, response=None):
         """
         Arranges the areas into an easier to read dictionary; since the
         login.cgi redirects users to this page by default, we allow users to
-        pass a request object.
+        pass a response object.
 
         the area.htm is rather a heavy set page, if we've already populated our
         area_names object then we can use a ligher query and just use the
         seq.json file to populate the same data.
 
         """
-        if not request:
-            # No request object was specified; we need to query the area.htm
+        if not response:
+            # No response object was specified; we need to query the area.htm
             # page.
             if not self._authenticated and not self.login():
-                return None
+                return False
 
-            headers = {
-                'Referer': self.url_login.format(self.host),
-                'User-Agent': self.user_agent
-            }
-
-            payload = {
-                'sess': self.session_id,
-            }
-
-            request = self.session.post(
-                self.url_areas.format(self.host),
-                data=payload,
-                headers=headers,
-            )
-
-            if request.status_code != requests.codes.ok:
-                return None
+            # Perform our Query
+            response = self.__get('/user/area.htm', is_json=False)
+            if not response:
+                return False
 
         #
         # Get our Area Names
@@ -358,15 +384,15 @@ class UltraSync(UltraSyncConfig):
         # It looks like this in the login.cgi response:
         #  var areaNames = ["","%21","%21","%21","%21","%21","%21","%21"];
         match = re.search(
-            r'var areaNames\s*=\s*(?P<area_names>[^]]+]);.*',
-            request.content.decode('utf-8'), re.M)
+            r'var areaNames\s*=\s*(?P<area_names>[^]]+]);.*', response, re.M)
         if not match:
             # No match and/or bad login
             return False
 
         # Store our Areas ('%21' == '!'; these are un-used areas)
         self._area_names = \
-            {x: {'name': unquote(y).strip()}
+            {x: {'name': unquote(y).strip()
+                 if unquote(y).strip() else 'Area {}'.format(x + 1)}
              for x, y in enumerate(json.loads(match.group('area_names')))
              if y != '%21'}
 
@@ -377,7 +403,7 @@ class UltraSync(UltraSyncConfig):
         #  var areaSequence = [149,0,0,0,0,0,0,0,0,0,0,0];
         match = re.search(
             r'var areaSequence\s*=\s*(?P<area_sequence>[^]]+]).*',
-            request.content.decode('utf-8'), re.M)
+            response, re.M)
         if not match:
             # No match and/or bad login
             return False
@@ -390,7 +416,7 @@ class UltraSync(UltraSyncConfig):
         #  var areaStatus = ["0100000000...000000"];
         match = re.search(
             r'var areaStatus\s*=\s*(?P<area_status>[^]]+]).*',
-            request.content.decode('utf-8'), re.M)
+            response, re.M)
         if not match:
             # No match and/or bad login
             return False
@@ -404,25 +430,12 @@ class UltraSync(UltraSyncConfig):
         """
 
         if not self._authenticated and not self.login():
-            return None
+            return False
 
-        headers = {
-            'Referer': self.url_login.format(self.host),
-            'User-Agent': self.user_agent
-        }
-
-        payload = {
-            'sess': self.session_id,
-        }
-
-        request = self.session.post(
-            self.url_zones.format(self.host),
-            data=payload,
-            headers=headers,
-        )
-
-        if request.status_code != requests.codes.ok:
-            return None
+        # Perform our Query
+        response = self.__get('/user/zones.htm', is_json=False)
+        if not response:
+            return False
 
         #
         # Get our Zone Names
@@ -430,8 +443,7 @@ class UltraSync(UltraSyncConfig):
         # It looks like this in the zones.htm response:
         #  var zoneNames = ["Front%20door%20","Garage%20Door","..."];
         match = re.search(
-            r'var zoneNames\s*=\s*(?P<zone_names>[^]]+]);.*',
-            request.content.decode('utf-8'), re.M)
+            r'var zoneNames\s*=\s*(?P<zone_names>[^]]+]);.*', response, re.M)
         if not match:
             # No match and/or bad login
             return False
@@ -449,7 +461,7 @@ class UltraSync(UltraSyncConfig):
         #  var zoneSequence = [110,0,2,73,8,38,0,0,0,10,83,36,0,0,0,0,16,0];
         match = re.search(
             r'var zoneSequence\s*=\s*(?P<zone_sequence>[^]]+]);.*',
-            request.content.decode('utf-8'), re.M)
+            response, re.M)
         if not match:
             # No match and/or bad login
             return False
@@ -462,7 +474,7 @@ class UltraSync(UltraSyncConfig):
         #  var zoneStatus = ["0100000000...000000"];
         match = re.search(
             r'var zoneStatus\s*=\s*(?P<zone_status>[^]]+]);.*',
-            request.content.decode('utf-8'), re.M)
+            response, re.M)
         if not match:
             # No match and/or bad login
             return False
@@ -474,8 +486,7 @@ class UltraSync(UltraSyncConfig):
         # It looks like this in the zone.htm response:
         #  var master = 1; # 1 if master, 0 if not
         match = re.search(
-            r'var ismaster\s*=\s*(?P<flag>[01]+).*',
-            request.content.decode('utf-8'), re.M)
+            r'var ismaster\s*=\s*(?P<flag>[01]+).*', response, re.M)
         if not match:
             # No match and/or bad login
             return False
@@ -487,8 +498,7 @@ class UltraSync(UltraSyncConfig):
         # It looks like this in the zone.htm response:
         #  var installer = 1; # 1 if installer, 0 if not
         match = re.search(
-            r'var isinstaller\s*=\s*(?P<flag>[01]+).*',
-            request.content.decode('utf-8'), re.M)
+            r'var isinstaller\s*=\s*(?P<flag>[01]+).*', response, re.M)
         if not match:
             # No match and/or bad login
             return False
@@ -496,7 +506,7 @@ class UltraSync(UltraSyncConfig):
 
         return True
 
-    def _status(self):
+    def _status(self, area_bank=0):
         """
         Performs a status check
 
@@ -518,32 +528,21 @@ class UltraSync(UltraSyncConfig):
         if not self._authenticated and not self.login():
             return None
 
-        headers = {
-            'Referer': self.url_login.format(self.host),
-            'User-Agent': self.user_agent
-        }
         payload = {
             'sess': self.session_id,
-            'arsel': '0',
+
+            # Select the Area Bank
+            'arsel': int(area_bank),
         }
 
-        request = self.session.post(
-            self.url_status.format(self.host),
-            data=payload,
-            headers=headers,
-        )
+        # Perform our Query
+        response = self.__get('/user/status.json', payload=payload)
+        if not response:
+            return False
 
-        if request.status_code != requests.codes.ok:
-            return None
-
-        try:
-            response = json.loads(request.content.decode('utf-8'))
-
-        except (AttributeError, TypeError, ValueError):
-            # ValueError = request.content is Unparsable
-            # TypeError = request.content is None
-            # AttributeError = r is None
-            response = None
+        # Convert Hex time to Local Date Time
+        response['time'] = datetime.fromtimestamp(
+            int(response['time'], 16)).strftime('%Y-%m-%d %H:%M:%S')
 
         return response
 
@@ -565,35 +564,76 @@ class UltraSync(UltraSyncConfig):
         if not self._authenticated and not self.login():
             return False
 
-        headers = {
-            'Referer': self.url_login.format(self.host),
-            'User-Agent': self.user_agent
-        }
-
-        payload = {
-            'sess': self.session_id,
-        }
-
-        request = self.session.post(
-            self.url_sequence.format(self.host),
-            data=payload,
-            headers=headers,
-        )
-
-        if request.status_code != requests.codes.ok:
-            return False
-
-        try:
-            response = json.loads(request.content.decode('utf-8'))
-
-        except (AttributeError, TypeError, ValueError):
-            # ValueError = request.content is Unparsable
-            # TypeError = request.content is None
-            # AttributeError = r is None
+        # Perform our Query
+        response = self.__get('/user/seq.json')
+        if not response:
             return False
 
         # Update our sequences
         self._area_sequence = response['area']
         self._zone_sequence = response['zone']
 
-        return True
+        # Convert Hex time to Local Date Time
+        response['time'] = datetime.fromtimestamp(
+            int(response['time'], 16)).strftime('%Y-%m-%d %H:%M:%S')
+
+        return response
+
+    def __get(self, path, payload=None, is_json=True, method='POST'):
+        """
+        HTTP POST wrapper for interfacing with our panel
+        """
+
+        headers = {
+            'Referer': 'http://{}/login.htm'.format(self.host),
+            'User-Agent': self.user_agent
+        }
+
+        if payload is None:
+            # Our default session
+            payload = {
+                'sess': self.session_id,
+            }
+
+        # Prepare our URL
+        url = 'http://{}{}'.format(self.host, path)
+
+        logger.debug('{} Request to {}'.format(method, url))
+
+        if method == 'POST':
+            # Make our POST request
+            request = self.session.post(url, data=payload, headers=headers)
+
+        else:
+            # Make our request
+            request = self.session.get(url, data=payload, headers=headers)
+
+        logger.debug('URL: {}, status_code: {}'.format(
+            url, request.status_code))
+        logger.debug('URL: {}, response:\n{}'.format(
+            url, request.content.decode(self.panel_encoding)))
+
+        if request.status_code != requests.codes.ok:
+            logger.error('Failed to query {}'.format(url))
+            return None
+
+        # Our response object
+        response = None
+
+        if is_json:
+            try:
+                response = json.loads(
+                    request.content.decode(self.panel_encoding))
+
+            except (AttributeError, TypeError, ValueError):
+                # ValueError = request.content is Unparsable
+                # TypeError = request.content is None
+                # AttributeError = r is None
+                logger.error(
+                    'Failed to receive JSON response from {}'
+                    .format(url))
+        else:
+            response = request.content.decode(self.panel_encoding)
+
+        # Return our results
+        return response

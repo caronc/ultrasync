@@ -61,4 +61,21 @@ def test_sequence(mock_post):
     uobj._authenticated = True
     uobj.session_id = 'ABCD1234'
 
-    assert uobj._sequence() is True
+    response = uobj._sequence()
+    assert isinstance(response, dict)
+    # Response should look like so:
+    # {
+    #   'time': '2019-11-28 22:29:06',
+    #   'area': [226, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    #   'zone': [24, 0, 2, 57, 8, 38, 0, 0, 0, 10, 83, 36, 0, 0, 0, 0, 16, 0],
+    #   'chime': [3, 0, 0, 0],
+    #   'config': 25505,
+    #   'zwdevice': 50398,
+    # }
+    assert response['time'] == '2019-11-28 22:29:06'
+    assert response['area'] == [226, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    assert response['zone'] == \
+        [24, 0, 2, 57, 8, 38, 0, 0, 0, 10, 83, 36, 0, 0, 0, 0, 16, 0]
+    assert response['chime'] == [3, 0, 0, 0]
+    assert response['config'] == 25505
+    assert response['zwdevice'] == 50398
