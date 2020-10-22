@@ -46,7 +46,7 @@ else:
 
 setup(
     name='ultrasync',
-    version='0.0.1',
+    version='0.8.0',
     description='Wrapper to Interlogix UltraSync ZeroWire Hub',
     license='MIT',
     long_description=open('README.md').read(),
