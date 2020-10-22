@@ -23,11 +23,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import time
 import click
 import logging
 import platform
 import json
 import sys
+from datetime import datetime
 from os.path import isfile
 from os.path import expanduser
 from os.path import expandvars
@@ -86,6 +88,7 @@ def print_version_msg():
 @click.command(context_settings=CONTEXT_SETTINGS)
 @click.option('--config', '-c', default=None, type=str, metavar='FILE',
               help='Specify configuration file.')
+@click.option('--watch', '-w', is_flag=True, help='Watch panel')
 @click.option('--details', '-d', is_flag=True, help='Print status')
 @click.option('--scene', '-s', type=str,
               metavar='SCENE',
@@ -97,7 +100,7 @@ def print_version_msg():
 @click.option('--verbose', '-v', count=True)
 @click.option('--version', '-V', is_flag=True,
               help='Display the version of the ultrasync library and exit.')
-def main(config, debug_dump, scene, details, verbose, version):
+def main(config, debug_dump, scene, details, watch, verbose, version):
     """
     Wrapper to ultrasync library.
     """
@@ -172,11 +175,59 @@ def main(config, debug_dump, scene, details, verbose, version):
         actioned = True
 
     if scene:
-        if not usync.set(scene):
+        if not usync.set(state=scene):
             # Failed to set scene
             logger.error(
                 'Could not load set scene to: {}'.format(scene))
             sys.exit(1)
+        actioned = True
+
+    if watch:
+        area_delta = {}
+        zone_delta = {}
+        while True:
+            # Get our details
+            results = usync.details()
+            if not results:
+                logger.error('Could not retrieve alarm status')
+                break
+
+            delim = False
+            for bank, zone in usync.zones.items():
+                if zone_delta.get(zone['bank']) != zone['sequence']:
+                    # Locate the difference
+                    print('{datetime} [{seq:0>3}] {name: <24}: '
+                          '{status}'.format(
+                              datetime=datetime.now().strftime(
+                                  '%Y-%m-%d %H:%M:%S'),
+                              seq=zone['sequence'],
+                              name=zone['name'],
+                              status=zone['status']))
+
+                    # Update our sequence
+                    zone_delta[zone['bank']] = zone['sequence']
+                    delim = True
+
+            for area in results.get('areas', []):
+                if area_delta.get(area['bank']) != area['sequence']:
+                    print('{datetime} [{seq:0>3}] {name: <24}: '
+                          '{status}'.format(
+                              datetime=datetime.now().strftime(
+                                  '%Y-%m-%d %H:%M:%S'),
+                              seq=area['sequence'],
+                              name=area['name'],
+                              status=area['status']))
+
+                    # Update our sequence
+                    area_delta[area['bank']] = area['sequence']
+                    delim = True
+
+            if delim:
+                # Provides a little sanity in the output
+                print('---')
+
+            time.sleep(0.5)
+
         actioned = True
 
     if not actioned:

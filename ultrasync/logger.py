@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2019 Chris Caron <lead2gold@gmail.com>
+# Copyright (C) 2020 Chris Caron <lead2gold@gmail.com>
 # All rights reserved.
 #
 # This code is licensed under the MIT License.
@@ -27,13 +27,6 @@ import logging
 
 # Define a verbosity level that is a noisier then debug mode
 logging.TRACE = logging.DEBUG - 1
-
-# Define a verbosity level that is always used even when no verbosity is set
-# from the command line.  The idea here is to allow for deprecation notices
-logging.DEPRECATE = logging.ERROR + 1
-
-# Assign our Levels into our logging object
-logging.addLevelName(logging.DEPRECATE, "DEPRECATION WARNING")
 logging.addLevelName(logging.TRACE, "TRACE")
 
 
@@ -45,17 +38,9 @@ def trace(self, message, *args, **kwargs):
         self._log(logging.TRACE, message, args, **kwargs)
 
 
-def deprecate(self, message, *args, **kwargs):
-    """
-    Deprication Warning Logging
-    """
-    if self.isEnabledFor(logging.DEPRECATE):
-        self._log(logging.DEPRECATE, message, args, **kwargs)
 
-
-# Assign our Loggers for use with the UltraSync wrapper
+# Assign our Trace Logger for use with the UltraSync wrapper
 logging.Logger.trace = trace
-logging.Logger.deprecate = deprecate
 
 # Create ourselve a generic logging reference
 logger = logging.getLogger('ultrasync')
