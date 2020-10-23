@@ -867,17 +867,8 @@ class UltraSync(UltraSyncConfig):
 
         perform_area_update = False
         perform_zone_update = False
-        for bank, area in self.areas.items():
-            if area['sequence'] != response['area'][bank]:
-                logger.debug('Area {} sequence changed'.format(bank + 1))
-                # We need to update our status here
-                area['sequence'] = response['area'][bank]
-                self._area_status_update(bank=bank)
-                perform_area_update = True
 
-        if perform_area_update:
-            self.process_areas()
-
+        # Process Zones/Sensors first
         for bank, sequence in enumerate(self.__zsequence):
             if sequence != response['zone'][bank]:
                 logger.debug('Zone {} sequence changed'.format(bank + 1))
@@ -886,12 +877,25 @@ class UltraSync(UltraSyncConfig):
                 self._zone_status_update(bank=bank)
                 perform_zone_update = True
 
+        # Process Area now
+        for bank, area in self.areas.items():
+            if area['sequence'] != response['area'][bank]:
+                logger.debug('Area {} sequence changed'.format(bank + 1))
+                # We need to update our status here
+                area['sequence'] = response['area'][bank]
+                self._area_status_update(bank=bank)
+                perform_area_update = True
+
         if perform_zone_update:
             # Update our zone sequence
             self.__zsequence = response['zone']
 
-            # Process all of our zones/sensors
+            # Process all of our triggered zones/sensors
             self.process_zones()
+
+        if perform_area_update:
+            # Process all of our triggered areas
+            self.process_areas()
 
         return response
 
