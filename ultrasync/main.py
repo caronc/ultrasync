@@ -937,6 +937,9 @@ class UltraSync(UltraSyncConfig):
             logger.trace('URL: {}, response:\n{}'.format(
                 url, request.content.decode(self.panel_encoding)))
 
+        except requests.exceptions.ReadTimeout:
+            logger.error('Connection read timeout')
+
         except requests.exceptions.ConnectTimeout:
             logger.error('Connection timeout')
 
@@ -964,7 +967,7 @@ class UltraSync(UltraSyncConfig):
                 path, payload=payload, is_json=is_json, method=method,
                 auth_on_fail=False)
 
-        if request.status_code != requests.codes.ok:
+        if not request or request.status_code != requests.codes.ok:
             logger.error('Failed to query {}'.format(url))
             return None
 
