@@ -16,7 +16,7 @@ This is just a small library and accompaning CLI tool I wrote to allow me to int
    1. Your ZeroWire login User ID
    1. Your ZeroWire login pin
 
-   **Note**: You can only be logged into the ZeroWire hub with the same user *once*; a subsequent login with the same user logs out the other. Since this plugin actively polls (and maintains a login session to) your Hub for the latest information, it can prevent you from being able to log into at the same time elsewhere.  It is strongly recommended you create a second user account on your Hub dedicated to just this application.
+   **Note**: You can only be logged into the ZeroWire hub with the same user *once*; a subsequent login with the same user logs out the other. Since this tool/software actively polls and maintains a login session to your Hub, it can prevent you from being able to log into at the same time elsewhere (via it's website).  It is strongly recommended you create a second user account on your Hub dedicated to just this service.
 
    ```python
    # An example of what would be found in your configuration file:
@@ -62,7 +62,7 @@ This is just a small library and accompaning CLI tool I wrote to allow me to int
   # Print a JSON formated snapshot of all home security details
   ultrasync --details
   ```
-- You can perform a dump of all of the web based files (that I've found to be useful so far) to disk.  This makes troubleshooting incredibly easy to do when I can have a copy of the files being parsed/processed.
+- You can perform a dump of all of the web based files (*that I've found to be useful so far*) to disk.  This makes troubleshooting incredibly much easier.
   ```bash
   # Extracts information from your UltraSync Hub that can be
   # incredibly useful in debugging and/or adding enhancments
@@ -71,6 +71,6 @@ This is just a small library and accompaning CLI tool I wrote to allow me to int
   The debug content gets written to a directory (residing in the same folder you ran this command from) in the form of: `YYYYmmddHHMMSS.ultrasync-dump`.
 
 # Disclaimer
-This software was created by reverse engineering my own personal security system. All of this code was generated through trial and error since there is no documentation that I could find that explains the registers or alterative programs on the internet I could reference. If you can help out by filling in some of the blanks throughout the code base, it would be greatly appreciative of it! Alternatively [buying me a coffee](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=MHANV39UZNQ5E) greatly inspires me to continue improving the application.
+This software was created by reverse engineering my own personal security system. All of this code was generated through trial and error since there is no documentation that I could find that explains the registers. If you can help out by filling in some of the blanks throughout the code base, I would be greatly appreciative of it! Alternatively [buying me a coffee](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=MHANV39UZNQ5E) greatly inspires me to continue improving the application.
 
-Alternatively, please feel free to file bugs and use this at your sole discretion as I have no control over how your own security system might have been set up. But what has been written here *should* work for all owners.
+Otherwise, please feel free to file bugs and use this at your sole discretion as I have no control over how your own security system might have been set up. But what has been written here *should* work for all owners.

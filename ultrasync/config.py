@@ -37,15 +37,24 @@ class UltraSyncConfig(object):
     # Default values
     _host = 'zerowire'
     _user = 'User 1'
-    _pin = 1234
+    _pin = '1234'
 
     _user_agent = 'Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:69.0) ' \
                   'Gecko/20100101 Firefox/69.0'
 
-    def __init__(self, path=None, *args, **kwargs):
+    def __init__(self, pin=None, user=None, host=None, path=None,
+                 user_agent=None, *args, **kwargs):
         """
         Initializes the configuration object
         """
+
+        # Assign Defaults
+        self._pin = pin if pin else UltraSyncConfig._pin
+        self._user = user if user else UltraSyncConfig._user
+        self._host = host if host else UltraSyncConfig._host
+        self._user_agent = \
+            user_agent if user_agent else UltraSyncConfig._user_agent
+
         if path and not self.load(path):
             raise AttributeError('Invalid path specified: {}'.format(path))
 
@@ -53,10 +62,6 @@ class UltraSyncConfig(object):
         """
         Loads the configuration specified by the path
         """
-        # Assign Defaults
-        self._host = UltraSyncConfig._host
-        self._user = UltraSyncConfig._user
-        self._pin = UltraSyncConfig._pin
 
         # Define what a valid line should look like
         valid_line_re = re.compile(
