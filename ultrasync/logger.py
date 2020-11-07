@@ -38,7 +38,6 @@ def trace(self, message, *args, **kwargs):
         self._log(logging.TRACE, message, args, **kwargs)
 
 
-
 # Assign our Trace Logger for use with the UltraSync wrapper
 logging.Logger.trace = trace
 

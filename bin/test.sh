@@ -1,6 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright (C) 2019 Chris Caron <lead2gold@gmail.com>
+#!/bin/sh
+# Copyright (C) 2020 Chris Caron <lead2gold@gmail.com>
 # All rights reserved.
 #
 # This code is licensed under the MIT License.
@@ -22,48 +21,45 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
+PYTEST=$(which py.test)
 
-import mock
-import requests
-from os.path import join
-from os.path import dirname
+# This script can basically be used to test individual tests that have
+# been created. Just run the to run all tests:
+#    ./devel/test.sh
 
-from ultrasync import UltraSync
+# to key in on a specific test type:
+#     ./devel/test.sh <keyword>
 
-# Disable logging for a cleaner testing output
-import logging
-logging.disable(logging.CRITICAL)
+# Absolute path to this script, e.g. /home/user/bin/foo.sh
+SCRIPT=$(readlink -f "$0")
 
-# Reference Directory
-TEST_VAR_DIR = join(dirname(__file__), 'var')
+# Absolute path this script is in, thus /home/user/bin
+SCRIPTPATH=$(dirname "$SCRIPT")
 
+PYTHONPATH=""
 
-@mock.patch('requests.Session.post')
-def test_zones(mock_post):
-    """
-    test sequence
+if [ -f "$(dirname $SCRIPTPATH)/setup.cfg" ]; then
+   PYTHONPATH="$(dirname $SCRIPTPATH)"
 
-    """
+elif [ -f "$SCRIPTPATH/setup.cfg" ]; then
+   PYTHONPATH="$SCRIPTPATH"
 
-    # A response object
-    robj = mock.Mock()
+else
+   echo "Error: Could not locate ultrasync setup.cfg file."
+   exit 1
+fi
 
-    # Simulate a valid login return
-    with open(join(TEST_VAR_DIR, 'zones.htm-okay'), 'rb') as f:
-        robj.content = f.read()
-    robj.status_code = requests.codes.ok
+if [ ! -x $PYTEST ]; then
+   echo "Error: $PYTEST was not found; make sure it is installed: 'pip3 install pytest'"
+   exit 1
+fi
 
-    # Assign our response object to our mocked instance of requests
-    mock_post.return_value = robj
+pushd $PYTHONPATH &>/dev/null
+if [ ! -z "$@" ]; then
+   LANG=C.UTF-8 PYTHONPATH=$PYTHONPATH $PYTEST -k "$@"
+   exit $?
 
-    uobj = UltraSync()
-
-    # Force valid authentication (for testing purposes)
-    uobj._authenticated = True
-    uobj.session_id = 'ABCD1234'
-
-    # We should successfully acquire our zones
-    assert uobj._zones()
-    assert isinstance(uobj._zone_names, dict)
-    assert isinstance(uobj._zone_sequence, list)
-    assert isinstance(uobj._zone_status, list)
+else
+   LANG=C.UTF-8 PYTHONPATH=$PYTHONPATH $PYTEST
+   exit $?
+fi

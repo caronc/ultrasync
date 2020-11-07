@@ -28,14 +28,32 @@ import json
 import re
 import os
 import math
+import xml.etree.ElementTree as ET
+from xml.etree.ElementTree import ParseError
 from datetime import datetime
 from datetime import timedelta
 from .common import (
-    AlarmScene, AreaStatus, AreaBank, ZoneStatus, ZoneBank, ALARM_SCENES,
-    AREA_STATES, ZONE_STATES, PanelFunction)
+    AlarmScene, AreaStatus, CNAreaBank, ZWAreaBank, ZoneStatus,
+    ZoneBank, ALARM_SCENES, AREA_STATES, ZONE_STATES, CNPanelFunction,
+    ZWPanelFunction, NX595EVendor)
 from .config import UltraSyncConfig
 from urllib.parse import unquote
 from .logger import logger
+
+
+class HubResponseType(object):
+    """
+    A simple object for the handling of all query response types
+    """
+    # For the handling of just straight HTML files mostly
+    # no changes are made to the response object
+    RAW = 'raw'
+
+    # JSON requests are used by the Informix ZeroWire Hub
+    JSON = 'json'
+
+    # XML requests are used by the ComNav Hub
+    XML = 'xml'
 
 
 class UltraSync(UltraSyncConfig):
@@ -62,21 +80,27 @@ class UltraSync(UltraSyncConfig):
         # Our session id is retrieved after a successful login
         self.session_id = None
 
+        # We need to track the vendor as it greatly impacts how we parse our
+        # results
+        self.vendor = None
+        self.version = None
+        self.release = None
+
         # User Status codes
         self.__is_master = None
         self.__is_installer = None
 
-        # Taken straight out of status.js
-        self.__area_state_byte = [
+        # Taken straight out of Informix ZeroWire status.js
+        self.__zw_area_state_byte = [
             6, 4, 0, 16, 20, 18, 22, 8, 10, 12, 64, 66, 68, 70, 72, 14, 56]
 
         # Our zones get populated after we connect
         self.zones = {}
-        self.__zbank = None
+        self._zbank = None
         self.__zsequence = None
 
         # Virtual bank for tracking individual sensor
-        self.__zvbank = {}
+        self._zvbank = {}
 
         # Our areas get populated after we connect
         self.areas = {}
@@ -103,7 +127,8 @@ class UltraSync(UltraSyncConfig):
 
         logger.info('Authenticating to {}'.format(self.host))
         response = self.__get(
-            '/login.cgi', payload=payload, is_json=False, auth_on_fail=False)
+            '/login.cgi', payload=payload,
+            rtype=HubResponseType.RAW, auth_on_fail=False)
         if not response:
             logger.error('Failed to authenticate to {}'.format(self.host))
             return False
@@ -132,13 +157,36 @@ class UltraSync(UltraSyncConfig):
         #                     ^
         #                     |
         match = re.search(
-            r'script src="(?P<path>/?[^/]+).*', response, re.M)
+            r'script src="(?P<path>/v_(?P<vendor>[^_]+)'
+            r'_0?(?P<version>[0-9]\.[0-9.]*)(-(?P<release>[^/]+))?).*',
+            response, re.M)
         if not match:
             # No match and/or bad login
             return False
 
         # Store our path
         self.__panel_url_path = match.group('path')
+
+        # Determine our Vendor and Version information
+        if match.group('vendor') == 'ZW':
+            self.vendor = NX595EVendor.ZEROWIRE
+
+        elif match.group('vendor') == 'CN':
+            self.vendor = NX595EVendor.COMNAV
+
+        else:
+            logger.error(
+                'Unsupported vendor {}'.format(match.group('vendor')))
+            return False
+
+        self.version = match.group('version')
+        self.release = match.group('release')
+
+        logger.debug('Detected {} NX-595E, Web Interface v{}-{}'.format(
+            self.vendor,
+            self.version,
+            self.release,
+        ))
 
         if not self._areas(response=response) or not self._zones():
             # No match and/or bad login
@@ -166,7 +214,7 @@ class UltraSync(UltraSyncConfig):
         self.session_id = None
 
         # Perform a logout
-        response = self.__get('/logout.cgi', is_json=False)
+        response = self.__get('/logout.cgi', rtype=HubResponseType.RAW)
         if not response:
             logger.error('Failed to authenticate to {}'.format(self.host))
             return False
@@ -189,22 +237,6 @@ class UltraSync(UltraSyncConfig):
         os.mkdir(path, mode=mode)
 
         urls = {
-            # status.json - Bank 0
-            'status.0.json': {
-                'path': '/user/status.json',
-                'payload': {
-                    'sess': self.session_id,
-                    'arsel': 0,
-                },
-            },
-            # status.json - Bank 1
-            'status.1.json': {
-                'path': '/user/status.json',
-                'payload': {
-                    'sess': self.session_id,
-                    'arsel': 1,
-                },
-            },
             # Area URL
             'area.htm': {
                 'path': '/user/area.htm',
@@ -218,16 +250,6 @@ class UltraSync(UltraSyncConfig):
             # Room URL
             'rooms.htm': {
                 'path': '/user/rooms.htm',
-            },
-
-            # Zones URL
-            'addrem.json': {
-                'path': '/user/zones.htm',
-            },
-
-            # Used to acquire sequence
-            'seq.json': {
-                'path': '/user/seq.json',
             },
 
             # Config Main Screen
@@ -248,45 +270,78 @@ class UltraSync(UltraSyncConfig):
                 'path': '{}/status.js'.format(self.__panel_url_path),
                 'method': 'GET'
             },
-            'connect.xml': {
+        }
+
+        if self.vendor is NX595EVendor.ZEROWIRE:
+            urls.update({
+                # Used to acquire sequence
+                'seq.json': {
+                    'path': '/user/seq.json',
+                },
+                'connect.xml': {
+                    'path': '/protect/randmenu.xml',
+                    'payload': {
+                        'sess': self.session_id,
+                        'item': 1,
+                        'minc': 'protect/connect.xml'
+                    },
+                },
+            })
+
+            # status.json - All Area's
+            urls.update({'status.{}.json'.format(no + 1): {
+                'path': '/user/status.json',
+                'payload': {
+                    'sess': self.session_id,
+                    'arsel': no,
+                }} for no in range(0, 4)})
+
+            # Scene Captures
+            urls.update({'scenes.{}.xml'.format(no + 1): {
                 'path': '/protect/randmenu.xml',
                 'payload': {
                     'sess': self.session_id,
-                    'item': 1,
-                    'minc': 'protect/connect.xml'
+                    'item': no + 1,
+                    'minc': 'protect/scenes.xml'
+                }} for no in range(0, 16)})
+
+            # Sensor Captures
+            urls.update({'sensor.{}.xml'.format(no + 1): {
+                'path': '/protect/randmenu.xml',
+                'payload': {
+                    'sess': self.session_id,
+                    'item': no + 1,
+                    'minc': 'protect/sensor.xml'
+                }} for no in range(0, 16)})
+
+            # Area Captures
+            urls.update({'area.{}.xml'.format(no + 1): {
+                'path': '/protect/randmenu.xml',
+                'payload': {
+                    'sess': self.session_id,
+                    'item': no + 1,
+                    'minc': 'protect/area.xml'
+                }} for no in range(0, 4)})
+
+        else:  # self.vendor is NX595EVendor.COMNAV
+
+            urls.update({
+                # Used to acquire sequence
+                'seq.xml': {
+                    'path': '/user/seq.xml',
                 },
-            },
-        }
+            })
 
-        # Scene Captures
-        urls.update({'scenes.{}.xml'.format(no + 1): {
-            'path': '/protect/randmenu.xml',
-            'payload': {
-                'sess': self.session_id,
-                'item': no + 1,
-                'minc': 'protect/scenes.xml'
-            }} for no in range(0, 16)})
-
-        # Sensor Captures
-        urls.update({'sensor.{}.xml'.format(no + 1): {
-            'path': '/protect/randmenu.xml',
-            'payload': {
-                'sess': self.session_id,
-                'item': no + 1,
-                'minc': 'protect/sensor.xml'
-            }} for no in range(0, 16)})
-
-        # Area Captures
-        urls.update({'area.{}.xml'.format(no + 1): {
-            'path': '/protect/randmenu.xml',
-            'payload': {
-                'sess': self.session_id,
-                'item': no + 1,
-                'minc': 'protect/area.xml'
-            }} for no in range(0, 4)})
+            # status.xml - All Area's
+            urls.update({'status.{}.xml'.format(no + 1): {
+                'path': '/user/status.xml',
+                'payload': {
+                    'sess': self.session_id,
+                    'arsel': no,
+                }} for no in range(0, 4)})
 
         for to_file, kwargs in urls.items():
-            response = self.__get(is_json=False, **kwargs)
+            response = self.__get(rtype=HubResponseType.RAW, **kwargs)
             if not response:
                 continue
 
@@ -307,31 +362,58 @@ class UltraSync(UltraSyncConfig):
         if state not in ALARM_SCENES:
             return False
 
-        mask = 1 << (area - 1) % 8
-        start = math.floor((area - 1) / 8)
-
         payload = {
             'sess': self.session_id,
-            'start': int(start),
-            'mask': mask,
+            'start': int(math.floor((area - 1) / 8)),
+            'mask': 1 << (area - 1) % 8,
         }
 
-        if state == AlarmScene.STAY:
+        if self.vendor is NX595EVendor.ZEROWIRE:
+
+            if state == AlarmScene.STAY:
+                payload.update({
+                    'fnum': ZWPanelFunction.AREA_STAY,
+                })
+
+            elif state == AlarmScene.AWAY:
+                payload.update({
+                    'fnum': ZWPanelFunction.AREA_AWAY,
+                })
+
+            else:   # AlarmScene.DISARMED
+                payload.update({
+                    'fnum': ZWPanelFunction.AREA_DISARM,
+                })
+
+            rtype = HubResponseType.JSON
+
+        else:  # self.vendor is NX595EVendor.COMNAV
+
             payload.update({
-                'fnum': PanelFunction.AREA_STAY,
+                'comm': '80',
+                'data0': '2',
+                'data1': '',
             })
 
-        elif state == AlarmScene.AWAY:
-            payload.update({
-                'fnum': PanelFunction.AREA_AWAY,
-            })
+            if state == AlarmScene.STAY:
+                payload.update({
+                    'data2': CNPanelFunction.AREA_STAY,
+                })
 
-        else:   # AlarmScene.DISARMED
-            payload.update({
-                'fnum': PanelFunction.AREA_DISARM,
-            })
+            elif state == AlarmScene.AWAY:
+                payload.update({
+                    'data2': CNPanelFunction.AREA_AWAY,
+                })
 
-        response = self.__get('/user/keyfunction.cgi', payload=payload)
+            else:   # AlarmScene.DISARMED
+                payload.update({
+                    'data2': CNPanelFunction.AREA_DISARM,
+                })
+
+            rtype = HubResponseType.XML
+
+        response = self.__get(
+            '/user/keyfunction.cgi', rtype=rtype, payload=payload)
         if not response:
             return False
 
@@ -401,44 +483,89 @@ class UltraSync(UltraSyncConfig):
                 return False
 
             # Perform our Query
-            response = self.__get('/user/area.htm', is_json=False)
+            response = self.__get('/user/area.htm', rtype=HubResponseType.RAW)
             if not response:
                 return False
 
         #
         # Get our Area Sequence
         #
-        # It looks like this in the login.cgi response:
-        #  var areaSequence = [149,0,0,0,0,0,0,0,0,0,0,0];
-        match = re.search(
-            r'var areaSequence\s*=\s*(?P<sequence>[^]]+]).*', response, re.M)
-        if not match:
-            # No match and/or bad login
-            return False
-        sequence = json.loads(match.group('sequence'))
+        if self.vendor is NX595EVendor.ZEROWIRE:
+            # It looks like this in the area.htm response
+            #  var areaSequence = [149,0,0,0,0,0,0,0,0,0,0,0];
+            match = re.search(
+                r'var areaSequence\s*=\s*'
+                r'(?P<sequence>[^]]+]).*', response, re.M)
+            if not match:
+                # No match and/or bad login
+                return False
+            sequence = json.loads(match.group('sequence'))
+
+        else:  # self.vendor is NX595EVendor.COMNAV
+            # It looks like this in the area.htm response
+            #  var areaSequence = new Array(104);
+            match = re.search(
+                r'var areaSequence\s*=\s*'
+                r'(new\s+)?Array\((?P<sequence>[^)]+)\).*', response, re.M)
+            if not match:
+                # No match and/or bad login
+                return False
+            sequence = json.loads('[{}]'.format(match.group('sequence')))
 
         #
         # Get our Area Status (Bank States)
         #
-        # It looks like this in the login.cgi response:
-        #  var areaStatus = ["0100000000...000000"];
-        match = re.search(
-            r'var areaStatus\s*=\s*(?P<states>[^]]+]).*', response, re.M)
-        if not match:
-            # No match and/or bad login
-            return False
-        bank_states = json.loads(match.group('states'))
+        if self.vendor is NX595EVendor.ZEROWIRE:
+            # It looks like this in the area.htm response:
+            #  var areaStatus = ["0100000000...000000"];
+            match = re.search(
+                r'var areaStatus\s*=\s*(?P<states>[^]]+]).*', response, re.M)
+            if not match:
+                # No match and/or bad login
+                return False
+            bank_states = json.loads(match.group('states'))
+
+        else:  # self.vendor is NX595EVendor.COMNAV
+            # It looks like this in the area.htm response:
+            #  var areaStatus = new Array(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+            #
+            # Every chunk of 17 bank states represents 1 area
+            match = re.search(
+                r'var areaStatus\s*=\s*'
+                r'(new\s*)?Array\((?P<states>[^)]+)\).*', response, re.M)
+            if not match:
+                # No match and/or bad login
+                return False
+            bank_states = json.loads('[{}]'.format(match.group('states')))
 
         #
         # Get our Area Names
         #
-        # It looks like this in the login.cgi response:
-        #  var areaNames = ["","%21","%21","%21","%21","%21","%21","%21"];
-        match = re.search(
-            r'var areaNames\s*=\s*(?P<area_names>[^]]+]);.*', response, re.M)
-        if not match:
-            # No match and/or bad login
-            return False
+        if self.vendor is NX595EVendor.ZEROWIRE:
+            # It looks like this in the area.htm response:
+            #  var areaNames = ["","%21","%21","%21","%21","%21","%21","%21"];
+            match = re.search(
+                r'var areaNames\s*=\s*'
+                r'(?P<area_names>[^]]+]);.*', response, re.M)
+            if not match:
+                # No match and/or bad login
+                return False
+            area_names = json.loads(match.group('area_names'))
+
+        else:  # self.vendor is NX595EVendor.COMNAV
+            # It looks like this in the area.htm response:
+            #  new Array("","!","!","!","!","!","!","!");
+            match = re.search(
+                r'var areaNames\s*=\s*'
+                r'(new\s*)?Array\((?P<area_names>[^)]+)\).*', response, re.M)
+            if not match:
+                # No match and/or bad login
+                return False
+            area_names = json.loads('[{}]'.format(match.group('area_names')))
+
+            # Ensure our sequence has as many elements in its array as
+            # there are areaName entries
+            sequence.extend([0] * (len(area_names) - len(sequence)))
 
         # Store our Areas ('%21' == '!'; these are un-used areas)
         self.areas = \
@@ -446,27 +573,41 @@ class UltraSync(UltraSyncConfig):
                  if unquote(y).strip() else 'Area {}'.format(x + 1),
                  'bank': x,
                  'sequence': sequence[x],
-                 'bank_state': bank_states[x]}
-             for x, y in enumerate(json.loads(match.group('area_names')))
-             if y != '%21'}
+                 'bank_state': bank_states[math.floor(x / 8) * 17:
+                                           (math.floor(x / 8) * 17) + 17]
+                 if self.vendor is NX595EVendor.COMNAV
+                 else bank_states[x]}
+
+             for x, y in enumerate(area_names)
+             if y != '%21' and y != '!'}
 
         return self.process_areas()
 
     def process_areas(self):
         """
-        Updates our area information based on new configuration
+        Processes our area information based on what was loaded in our
+        configuration
+        """
+        return getattr(self, '{}_process_areas'.format(self.vendor))()
+
+    def zerowire_process_areas(self):
+        """
+        Process our area information based on current configuration
 
         """
-        # The following was reverse-engineered from status.js
+        # The following was reverse-engineered from status.js on the Informix
+        # ZeroWire (UltraSync) NX-595E Device:
+
         # from the function updateArea():
         for bank, area in self.areas.items():
 
             # some globals
             mask = 1 << bank % 8
 
-            # prepare ourselves a virtual states for reference that can be
-            # later indexed by name for readability.
-            # Basically in status.js all references are by bank[idx:idx + 2];
+            # Prepare ourselves a virtual states for reference that can be
+            # later indexed by name for readability. Basically in
+            # status.js all references are by -> bank[idx:idx + 2];
+            #
             # This just translate mappings to that:
             #   0:2 - index 0
             #   2:4 - index 1
@@ -477,20 +618,17 @@ class UltraSync(UltraSyncConfig):
                      for s in range(0, 80, 2)]
 
             # Partially Armed State
-            st_partial = bool(vbank[AreaBank.PARTIAL])
+            st_partial = bool(vbank[ZWAreaBank.PARTIAL])
 
             # Armed State
-            st_armed = bool(vbank[AreaBank.ARMED])
+            st_armed = bool(vbank[ZWAreaBank.ARMED])
 
             # Exit Mode
-            st_exit1 = bool(vbank[AreaBank.EXIT_MODE01])
-            st_exit2 = bool(vbank[AreaBank.EXIT_MODE02])
+            st_exit1 = bool(vbank[ZWAreaBank.EXIT_MODE01])
+            st_exit2 = bool(vbank[ZWAreaBank.EXIT_MODE02])
 
             # Chime Set
-            st_chime = bool(vbank[AreaBank.CHIME])
-
-            # ?
-            st_night = bool(vbank[AreaBank.NIGHT])
+            st_chime = bool(vbank[ZWAreaBank.CHIME])
 
             # Priority, the lower, the higher it is; 6 being the lowest
             priority = 6
@@ -499,8 +637,7 @@ class UltraSync(UltraSyncConfig):
             status = None
 
             # Our initial index starting point
-            bank_no = AreaBank.ARMED \
-                if st_exit1 or st_exit2 else AreaBank.UNKWN_00
+            bank_no = 3 if st_exit1 or st_exit2 else 0
 
             while not status:
 
@@ -509,19 +646,17 @@ class UltraSync(UltraSyncConfig):
                     status = AreaStatus.READY
                     break
 
-                # The old working way (based on status.js
-                # bool(int(bank_state[self.__area_state_byte[bank_no]:
-                #      self.__area_state_byte[bank_no] + 2], 16))
-                if vbank[int(self.__area_state_byte[bank_no] / 2)]:
+                if vbank[int(self.__zw_area_state_byte[bank_no] / 2)]:
                     if st_partial:
                         status = AREA_STATES[bank_no]
                         if status in (AreaStatus.ARMED_STAY,
                                       AreaStatus.EXIT_DELAY_1,
                                       AreaStatus.EXIT_DELAY_2):
-                            if st_night:
+
+                            if vbank[ZWAreaBank.NIGHT]:
                                 status += ' - Night'
 
-                            elif vbank[AreaBank.UNKWN_07]:
+                            elif vbank[ZWAreaBank.INSTANT]:
                                 status += ' - Instant'
 
                     if status == AreaStatus.EXIT_DELAY_1:
@@ -533,25 +668,25 @@ class UltraSync(UltraSyncConfig):
                         and not (st_armed or st_partial):
                     # Update
                     status = AreaStatus.NOT_READY \
-                        if not vbank[AreaBank.UNKWN_01] \
+                        if not vbank[ZWAreaBank.UNKWN_01] \
                         else AreaStatus.NOT_READY_FORCEABLE
 
                 # increment our index by one
                 bank_no += 1
 
-            if vbank[AreaBank.UNKWN_08] or vbank[AreaBank.UNKWN_09] or \
-                    vbank[AreaBank.UNKWN_10] or vbank[AreaBank.UNKWN_11]:
+            if vbank[ZWAreaBank.UNKWN_08] or vbank[ZWAreaBank.UNKWN_09] or \
+                    vbank[ZWAreaBank.UNKWN_10] or vbank[ZWAreaBank.UNKWN_11]:
 
                 # Assign priority to 1
                 priority = 1
 
-            elif vbank[AreaBank.UNKWN_33] or vbank[AreaBank.UNKWN_34] or \
-                    vbank[AreaBank.UNKWN_35] or vbank[AreaBank.UNKWN_36]:
+            elif vbank[ZWAreaBank.UNKWN_33] or vbank[ZWAreaBank.UNKWN_34] or \
+                    vbank[ZWAreaBank.UNKWN_35] or vbank[ZWAreaBank.UNKWN_36]:
 
                 # Assign priority to 2
                 priority = 2
 
-            elif st_partial or vbank[AreaBank.UNKWN_32]:
+            elif st_partial or vbank[ZWAreaBank.UNKWN_32]:
                 # Assign priority to 3
                 priority = 3
 
@@ -559,7 +694,7 @@ class UltraSync(UltraSyncConfig):
                 # Assign priority to 4
                 priority = 4
 
-            elif not vbank[AreaBank.UNKWN_00]:
+            elif not vbank[ZWAreaBank.UNKWN_00]:
                 # Assign priority to 5
                 priority = 5
 
@@ -568,7 +703,107 @@ class UltraSync(UltraSyncConfig):
                 'states': {
                     'armed': st_armed,
                     'partial': st_partial,
-                    'night': st_night,
+                    'chime': st_chime,
+                    'exit1': st_exit1,
+                    'exit2': st_exit2,
+                },
+                'status': status,
+            })
+
+        return True
+
+    def comnav_process_areas(self):
+        """
+        Process our area information based on current configuration
+
+        """
+        # The following was reverse-engineered from status.js on the ComNav
+        # (UltraSync) NX-595E Device:
+
+        # from the function updateArea():
+        for bank, area in self.areas.items():
+
+            # some globals
+            mask = 1 << bank % 8
+
+            # Prepare ourselves a virtual states for reference that can be
+            # later indexed by name for readability.
+            vbank = [int(a) & mask for a in area['bank_state']]
+
+            # Partially Armed State
+            st_partial = bool(vbank[CNAreaBank.PARTIAL])
+
+            # Armed State
+            st_armed = bool(vbank[CNAreaBank.ARMED])
+
+            # Exit Mode
+            st_exit1 = bool(vbank[CNAreaBank.EXIT_MODE01])
+            st_exit2 = bool(vbank[CNAreaBank.EXIT_MODE02])
+
+            # Chime Set
+            st_chime = bool(vbank[CNAreaBank.CHIME])
+
+            # Priority, the lower, the higher it is; 6 being the lowest
+            priority = 6
+
+            # Now we'll attempt to detect our status
+            status = None
+
+            # Our initial index starting point
+            bank_no = 3 if st_exit1 or st_exit2 else 0
+
+            while not status:
+
+                if bank_no >= len(AREA_STATES):
+                    # Set status
+                    status = AreaStatus.READY
+                    break
+
+                    if st_partial:
+                        status = AREA_STATES[bank_no]
+
+                    if status == AreaStatus.EXIT_DELAY_1:
+                        # Bump to EXIT_DELAY_2; we'll eventually hit
+                        # the bottom of our while loop and move past that too
+                        bank_no += 1
+
+                elif AREA_STATES[bank_no] == AreaStatus.READY \
+                        and not (st_armed or st_partial):
+                    # Update
+                    status = AreaStatus.NOT_READY
+
+                # increment our index by one
+                bank_no += 1
+
+            if vbank[CNAreaBank.UNKWN_03] or vbank[CNAreaBank.UNKWN_04] or \
+                    vbank[CNAreaBank.UNKWN_05] or vbank[CNAreaBank.UNKWN_06]:
+
+                # Assign priority to 1
+                priority = 1
+
+            elif vbank[CNAreaBank.UNKWN_11] or vbank[CNAreaBank.UNKWN_12] or \
+                    vbank[CNAreaBank.UNKWN_13] or vbank[CNAreaBank.UNKWN_14]:
+
+                # Assign priority to 2
+                priority = 2
+
+            elif vbank[CNAreaBank.UNKWN_10] or st_partial:
+                # Assign priority to 3
+                priority = 3
+
+            elif st_armed:
+                # Assign priority to 4
+                priority = 4
+
+            elif vbank[CNAreaBank.UNKWN_02]:
+                # Assign priority to 5
+                priority = 5
+
+            area.update({
+                'priority': priority,
+                'states': {
+                    'armed': st_armed,
+                    'partial': st_partial,
                     'chime': st_chime,
                     'exit1': st_exit1,
                     'exit2': st_exit2,
@@ -580,12 +815,19 @@ class UltraSync(UltraSyncConfig):
 
     def process_zones(self):
         """
+        Processes our zone/sensor information based on what was loaded in our
+        configuration
+        """
+        return getattr(self, '{}_process_zones'.format(self.vendor))()
+
+    def zerowire_process_zones(self):
+        """
         Updates our zone/sensor information based on new configuration
 
         """
 
         # The following was reverse-engineered from status.js
-        # from the function updateArea():
+        # from the function updateZone():
         for bank, zone in self.zones.items():
 
             # some globals
@@ -598,11 +840,11 @@ class UltraSync(UltraSyncConfig):
             priority = 5
 
             # prepare ourselves a virtual states for reference
-            vbank = [int(self.__zbank[s][idx:idx + 2], 16) & mask
+            vbank = [int(self._zbank[s][idx:idx + 2], 16) & mask
                      for s in range(0, 18)]
 
-            # Update our virtual bank
-            self.__zvbank[bank] = ''.join(
+            # Update our zone virtual bank
+            self._zvbank[bank] = ''.join(
                 [str(1 if b else 0) for b in vbank])
 
             # Track whether or not element is part of things
@@ -642,16 +884,90 @@ class UltraSync(UltraSyncConfig):
             # Update our sequence
             sequence = UltraSync.next_sequence(
                 zone.get('sequence', 0)) \
-                if zone.get('bank_state') != self.__zvbank[bank] \
+                if zone.get('bank_state') != self._zvbank[bank] \
                 else zone.get('sequence', 0)
 
             zone.update({
                 'priority': priority,
                 'status': status,
                 'can_bypass': can_bypass,
-                'bank_state': self.__zvbank[bank],
+                'bank_state': self._zvbank[bank],
                 'sequence': sequence,
             })
+        return True
+
+    def comnav_process_zones(self):
+        """
+        Updates our zone/sensor information based on new configuration
+
+        """
+
+        # The following was reverse-engineered from status.js
+        # from the function updateZone():
+        for bank, zone in self.zones.items():
+
+            # some globals
+            mask = 1 << bank % 16
+
+            # Our initial offset
+            idx = math.floor(bank / 16)
+
+            # Priority, the lower, the higher it is; 5 being the lowest
+            priority = 5
+
+            # prepare ourselves a virtual states for reference
+            vbank = [bool(int(self._zbank[s][idx]) & mask)
+                     for s in range(0, len(self._zbank))]
+
+            # Update our zone virtual bank
+            self._zvbank[bank] = ''.join(
+                [str(1 if b else 0) for b in vbank])
+
+            if vbank[ZoneBank.UNKWN_05]:
+                # red
+                priority = 1
+
+            elif vbank[ZoneBank.UNKWN_01] or vbank[ZoneBank.UNKWN_02] or \
+                    vbank[ZoneBank.UNKWN_06] or vbank[ZoneBank.UNKWN_07]:
+
+                # blue
+                priority = 2
+
+            elif vbank[ZoneBank.UNKWN_03] or vbank[ZoneBank.UNKWN_04]:
+                # yellow
+                priority = 3
+
+            elif vbank[ZoneBank.UNKWN_00]:
+                # grey
+                priority = 4
+
+            bank_no = 0
+
+            status = None
+            while not status:
+                if vbank[bank_no]:
+                    status = ZONE_STATES[bank_no]
+
+                elif bank_no == 0:
+                    status = ZoneStatus.READY
+
+                # Increment our index
+                bank_no += 1
+
+            # Update our sequence
+            sequence = UltraSync.next_sequence(
+                zone.get('sequence', 0)) \
+                if zone.get('bank_state') != self._zvbank[bank] \
+                else zone.get('sequence', 0)
+
+            zone.update({
+                'priority': priority,
+                'status': status,
+                'can_bypass': None,
+                'bank_state': self._zvbank[bank],
+                'sequence': sequence,
+            })
+
         return True
 
     def _zones(self):
@@ -665,82 +981,139 @@ class UltraSync(UltraSyncConfig):
         logger.info('Retrieving initial Zone/Sensor information.')
 
         # Perform our Query
-        response = self.__get('/user/zones.htm', is_json=False)
+        response = self.__get('/user/zones.htm', rtype=HubResponseType.RAW)
         if not response:
             return False
 
         #
         # Get our Zone Sequence
         #
-        # It looks like this in the zone.htm response:
-        #  var zoneSequence = [110,0,2,73,8,38,0,0,0,10,83,36,0,0,0,0,16,0];
-        match = re.search(
-            r'var zoneSequence\s*=\s*(?P<sequence>[^]]+]);.*', response, re.M)
-        if not match:
-            # No match and/or bad login
-            return False
-        # Store our sequence
-        self.__zsequence = json.loads(match.group('sequence'))
+        if self.vendor is NX595EVendor.ZEROWIRE:
+            # It looks like this in the zone.htm response:
+            #  var zoneSequence = [110,0,2,73,8,38,0,0,0,10,83,0,0,0,0,0,16,0];
+            match = re.search(
+                r'var zoneSequence\s*=\s*'
+                r'(?P<sequence>[^]]+]);.*', response, re.M)
+            if not match:
+                # No match and/or bad login
+                return False
+            # Store our sequence
+            self.__zsequence = json.loads(match.group('sequence'))
+
+        else:  # self.vendor is NX595EVendor.COMNAV
+            # It looks like this in the zone.htm response:
+            #  var zoneSequence = new Array(27,0,0,0,239,182,0,0)
+            match = re.search(
+                r'var zoneSequence\s*=\s*'
+                r'(new\s+)?Array\((?P<sequence>[^)]+)\).*', response, re.M)
+            if not match:
+                # No match and/or bad login
+                return False
+            self.__zsequence = json.loads(
+                '[{}]'.format(match.group('sequence')))
 
         #
         # Get our Zone Sequence
         #
-        # It looks like this in the zone.htm response:
-        #  var zoneStatus = ["0100000000...000000"];
-        match = re.search(
-            r'var zoneStatus\s*=\s*(?P<states>[^]]+]);.*', response, re.M)
-        if not match:
-            # No match and/or bad login
-            return False
-        self.__zbank = json.loads(match.group('states'))
+        if self.vendor is NX595EVendor.ZEROWIRE:
+            # It looks like this in the zone.htm response:
+            #  var zoneStatus = ["0100000000...000000"];
+            match = re.search(
+                r'var zoneStatus\s*=\s*(?P<states>[^]]+]);.*', response, re.M)
+            if not match:
+                # No match and/or bad login
+                return False
+            self._zbank = json.loads(match.group('states'))
+
+        else:  # self.vendor is NX595EVendor.COMNAV
+
+            #  var zoneStatus = new Array(new Array(0,0),new Array(0,0),...
+            match = re.search(
+                r'var zoneStatus\s*=\s*'
+                r'(new\s+)?Array\((?P<states>[^;]+?)\);.*', response, re.M)
+            if not match:
+                # No match and/or bad login
+                return False
+
+            # At this point we still have to further parse our many, many
+            # 'new Array(x,y,z..)' entries...; We want to update our match
+            match = re.findall(
+                r'(?:new\s+)?Array\((?P<states>[^)]+)\)\s*'
+                r'(?=$|,\s*(?:new\s+)?Array\()', match.group('states'))
+
+            self._zbank = json.loads(
+                '[{}]'.format(','.join(['[{}]'.format(x) for x in match])))
 
         #
         # Get our Zone Names
         #
-        # It looks like this in the zones.htm response:
-        #  var zoneNames = ["Front%20door%20","Garage%20Door","..."];
-        match = re.search(
-            r'var zoneNames\s*=\s*(?P<zone_names>[^]]+]);.*', response, re.M)
-        if not match:
-            # No match and/or bad login
-            return False
+        if self.vendor is NX595EVendor.ZEROWIRE:
+            # It looks like this in the zones.htm response:
+            #  var zoneNames = ["Front%20door","Garage%20Door","..."];
+            match = re.search(
+                r'var zoneNames\s*=\s*'
+                r'(?P<zone_names>[^]]+]);.*', response, re.M)
+            if not match:
+                # No match and/or bad login
+                return False
+            zone_names = json.loads(match.group('zone_names'))
+
+        else:  # self.vendor is NX595EVendor.COMNAV
+
+            # It looks like this in the zone.htm response:
+            #  var zoneNames = new Array("Front%20door","Garage%20Door","...");
+            match = re.search(
+                r'var zoneNames\s*=\s*'
+                r'(new\s+)?Array\((?P<zone_names>[^)]+)\).*', response, re.M)
+            if not match:
+                # No match and/or bad login
+                return False
+            zone_names = json.loads('[{}]'.format(match.group('zone_names')))
 
         # Store our Zones ('%21' == '!'; these are un-used sensors)
         self.zones = \
             {x: {'name': unquote(y).strip()
                  if unquote(y).strip() else '{}'.format(x + 1), 'bank': x}
-             for x, y in enumerate(json.loads(match.group('zone_names')))
-             if y != '%21'}
+             for x, y in enumerate(zone_names)
+             if y != '%21' and y != '!' and y != ''}
 
         #
         # Get our Master Status
         #
-        # It looks like this in the zone.htm response:
-        #  var master = 1; # 1 if master, 0 if not
-        match = re.search(
-            r'var ismaster\s*=\s*(?P<flag>[01]+).*', response, re.M)
-        if not match:
-            # No match and/or bad login
-            return False
-        self.__is_master = True if int(match.group('flag')) else False
+        if self.vendor is NX595EVendor.ZEROWIRE:
+            # It looks like this in the zone.htm response:
+            #  var master = 1; # 1 if master, 0 if not
+            match = re.search(
+                r'var ismaster\s*=\s*(?P<flag>[01]+).*', response, re.M)
+            if not match:
+                # No match and/or bad login
+                return False
+            self.__is_master = True if int(match.group('flag')) else False
 
-        #
-        # Get our Installer Status
-        #
-        # It looks like this in the zone.htm response:
-        #  var installer = 1; # 1 if installer, 0 if not
-        match = re.search(
-            r'var isinstaller\s*=\s*(?P<flag>[01]+).*', response, re.M)
-        if not match:
-            # No match and/or bad login
-            return False
-        self.__is_installer = True if int(match.group('flag')) else False
+            #
+            # Get our Installer Status
+            #
+            # It looks like this in the zone.htm response:
+            #  var installer = 1; # 1 if installer, 0 if not
+            match = re.search(
+                r'var isinstaller\s*=\s*(?P<flag>[01]+).*', response, re.M)
+            if not match:
+                # No match and/or bad login
+                return False
+            self.__is_installer = True if int(match.group('flag')) else False
 
         return self.process_zones()
 
     def _area_status_update(self, bank=0):
         """
-        Performs a status check
+        Performs an area status check
+        """
+        return getattr(self, '_{}_area_status_update'
+                             .format(self.vendor))(bank=bank)
+
+    def _zerowire_area_status_update(self, bank=0):
+        """
+        Performs a area status check for the Informix ZeroWire Hub
 
         A status response could look like this:
         {
@@ -771,7 +1144,8 @@ class UltraSync(UltraSyncConfig):
         }
 
         # Perform our Query
-        response = self.__get('/user/status.json', payload=payload)
+        response = self.__get(
+            '/user/status.json', rtype=HubResponseType.JSON, payload=payload)
         if not response:
             return None
 
@@ -784,9 +1158,70 @@ class UltraSync(UltraSyncConfig):
 
         return response
 
+    def _comnav_area_status_update(self, bank=0):
+        """
+        Performs a area status check for the ComNav Hub
+
+        A status response could look like this:
+            <response>
+              <abank>0</abank>
+              <aseq>125</aseq>
+              <stat0>0</stat0>
+              <stat1>0</stat1>
+              <stat2>0</stat2>
+              <stat3>0</stat3>
+              <stat4>0</stat4>
+              <stat5>0</stat5>
+              <stat6>0</stat6>
+              <stat7>0</stat7>
+              <stat8>0</stat8>
+              <stat9>0</stat9>
+              <stat10>0</stat10>
+              <stat11>0</stat11>
+              <stat12>0</stat12>
+              <stat13>0</stat13>
+              <stat14>0</stat14>
+              <stat15>0</stat15>
+              <stat16>0</stat16>
+              <sysflt>No System Faults</sysflt>
+            </response>
+
+        """
+
+        logger.info(
+            'Updating Area information on bank {}'.format(bank))
+
+        if not self.session_id and not self.login():
+            return None
+
+        payload = {
+            'sess': self.session_id,
+
+            # Select the Area Bank
+            'arsel': bank,
+        }
+
+        # Perform our Query
+        response = self.__get(
+            '/user/status.xml', rtype=HubResponseType.XML, payload=payload)
+        if not response:
+            return None
+
+        self.areas[bank]['bank_state'] = \
+            [int(response.find('stat{}'.format(x)).text) for x in range(0, 17)]
+
+        return response
+
     def _zone_status_update(self, bank=0):
         """
         Performs a zone status check
+        """
+        return getattr(self, '_{}_zone_status_update'
+                             .format(self.vendor))(bank=bank)
+
+    def _zerowire_zone_status_update(self, bank=0):
+        """
+        Performs a zone status check for the Informix Zerowire Hub
 
         A status response could look like this:
         {
@@ -812,12 +1247,13 @@ class UltraSync(UltraSyncConfig):
         }
 
         # Perform our Query
-        response = self.__get('/user/zstate.json', payload=payload)
+        response = self.__get(
+            '/user/zstate.json', rtype=HubResponseType.JSON, payload=payload)
         if not response:
             return None
 
         # Update our bank states
-        self.__zbank[bank] = response['bankstates']
+        self._zbank[bank] = response['bankstates']
 
         # Convert Hex time to Local Date Time
         response['time'] = datetime.fromtimestamp(
@@ -825,7 +1261,50 @@ class UltraSync(UltraSyncConfig):
 
         return response
 
+    def _comnav_zone_status_update(self, bank=0):
+        """
+        Performs a zone status check for the ComNav Hub
+
+        A status response could look like this:
+            <response>
+              <zstate>0</zstate>
+              <zseq>153</zseq>
+              <zdat>21,0,0,10,0,0,0,0,0,0,0,1,0,0</zdat>
+            </response>
+        """
+
+        logger.info(
+            'Updating Zone/Sensor information on bank {}'.format(bank))
+
+        if not self.session_id and not self.login():
+            return None
+
+        payload = {
+            'sess': self.session_id,
+
+            # Select the Zone Bank
+            'state': bank,
+        }
+
+        # Perform our Query
+        response = self.__get(
+            '/user/zstate.xml', rtype=HubResponseType.XML, payload=payload)
+        if not response:
+            return None
+
+        # Update our bank states
+        self._zbank[bank] = \
+            [int(x) for x in response.find('zdat').text.split(',')]
+
+        return response
+
     def _sequence(self):
+        """
+        Returns the sequences for both the zones, entries, and areas
+        """
+        return getattr(self, '_{}_sequence'.format(self.vendor))()
+
+    def _zerowire_sequence(self):
         """
         Returns the sequences for both the zones, entries, and areas
 
@@ -857,7 +1336,7 @@ class UltraSync(UltraSyncConfig):
             return None
 
         # Perform our Query
-        response = self.__get('/user/seq.json')
+        response = self.__get('/user/seq.json', rtype=HubResponseType.JSON)
         if not response:
             return None
 
@@ -873,7 +1352,7 @@ class UltraSync(UltraSyncConfig):
             if sequence != response['zone'][bank]:
                 logger.debug('Zone {} sequence changed'.format(bank + 1))
                 # We need to update our status here
-                self.__zbank[bank] = response['zone'][bank]
+                self._zbank[bank] = response['zone'][bank]
                 self._zone_status_update(bank=bank)
                 perform_zone_update = True
 
@@ -899,8 +1378,73 @@ class UltraSync(UltraSyncConfig):
 
         return response
 
-    def __get(self, path, payload=None, is_json=True, method='POST',
-              auth_on_fail=True):
+    def _comnav_sequence(self):
+        """
+        Returns the sequences for both the zones, entries, and areas
+
+        A sequence response could look like this:
+            <response>
+              <areas>124</areas>
+              <zones>21,0,0,10,0,0,0,0,0,0,0,1,0,0</zones>
+            </response>
+
+        A sequence is a way of polling the panel to see if there is anything
+        new to report. If there are no changes, then the sequence values
+        remain unchanged.
+
+        If a sequence value is changed, the index of the 'area' is the bank
+        that was updated.... so if index 0 was updated, then Area 1 changed.
+        It is up to the user to call for an _area_status_update() with the
+        respected index that needs updating.
+
+        The same goes for if a 'zone' bank changes; a call to
+        _zone_status_update() is required to be called referencing the
+        respected bank that changed.
+
+        """
+        if not self.session_id and not self.login():
+            return None
+
+        # Perform our Query
+        response = self.__get('/user/seq.xml', rtype=HubResponseType.XML)
+        if not response:
+            return None
+
+        # Update our zone sequences
+        z_seq = [int(x) for x in response.find('zones').text.split(',')]
+        a_seq = [int(x) for x in response.find('areas').text.split(',')]
+
+        # Process Zones/Sensors first
+        for bank, sequence in enumerate(self.__zsequence):
+            if sequence != z_seq[bank]:
+                logger.debug('Zone {} sequence changed'.format(bank + 1))
+                # We need to update our status here
+                self._zbank[bank] = z_seq[bank]
+                self._zone_status_update(bank=bank)
+                perform_zone_update = True
+
+        # Process Area now
+        for bank, area in self.areas.items():
+            if area['sequence'] != a_seq[bank]:
+                logger.debug('Area {} sequence changed'.format(bank + 1))
+                # We need to update our status here
+                area['sequence'] = a_seq[bank]
+                self._area_status_update(bank=bank)
+                perform_area_update = True
+
+        if perform_zone_update:
+            # Update our zone sequence
+            self.__zsequence = response['zone']
+
+            # Process all of our triggered zones/sensors
+            self.process_zones()
+
+        if perform_area_update:
+            # Process all of our triggered areas
+            self.process_areas()
+
+    def __get(self, path, payload=None, rtype=HubResponseType.RAW,
+              method='POST', auth_on_fail=True):
         """
         HTTP POST wrapper for interfacing with our panel
         """
@@ -919,7 +1463,7 @@ class UltraSync(UltraSyncConfig):
         # Prepare our URL
         url = 'http://{}{}'.format(self.host, path)
 
-        logger.trace('{} Request to {}'.format(method, url))
+        logger.trace('{} {} Request to {}'.format(rtype.upper(), method, url))
 
         request = None
 
@@ -968,7 +1512,7 @@ class UltraSync(UltraSyncConfig):
                 payload['sess'] = self.session_id
 
             return self.__get(
-                path, payload=payload, is_json=is_json, method=method,
+                path, payload=payload, rtype=rtype, method=method,
                 auth_on_fail=False)
 
         if not request or request.status_code != requests.codes.ok:
@@ -978,7 +1522,7 @@ class UltraSync(UltraSyncConfig):
         # Our response object
         response = None
 
-        if is_json:
+        if rtype is HubResponseType.JSON:
             try:
                 response = json.loads(
                     request.content.decode(self.panel_encoding))
@@ -990,6 +1534,17 @@ class UltraSync(UltraSyncConfig):
                 logger.error(
                     'Failed to receive JSON response from {}'
                     .format(url))
+
+        elif rtype is HubResponseType.XML:
+            try:
+                response = ET.fromstring(
+                    request.content.decode(self.panel_encoding)).getroot()
+
+            except ParseError:
+                logger.error(
+                    'Failed to receive XML response from {}'
+                    .format(url))
+
         else:
             response = request.content.decode(self.panel_encoding)
 

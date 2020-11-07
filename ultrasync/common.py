@@ -23,9 +23,23 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-class PanelFunction(object):
+
+class NX595EVendor(object):
     """
-    Function Commands (fnum entries)
+    Defines the possible NX-595E vendors.  This greatly affects how the
+    control panel is parsed
+    """
+
+    # Informix ZeroWire UltraSync
+    ZEROWIRE = 'zerowire'
+
+    # ComNav UltraSync
+    COMNAV = 'comnav'
+
+
+class ZWPanelFunction(object):
+    """
+    Informix ZeroWire Function Commands
     """
 
     AREA_DISARM = 0
@@ -34,9 +48,20 @@ class PanelFunction(object):
     AREA_AWAY = 15
 
 
-class AreaBank(object):
+class CNPanelFunction(object):
     """
-    Defines the Bank Identifiers for Area Queries
+    ComNav Function Commands
+    """
+
+    AREA_CHIME_TOGGLE = 1
+    AREA_DISARM = 16
+    AREA_AWAY = 17
+    AREA_STAY = 18
+
+
+class ZWAreaBank(object):
+    """
+    Defines the Bank Identifiers for Informix ZeroWire Area Queries
 
     By identifying the bank and breaking it down, it makes the code
     MUCH easier to read for others.  It also makes the code easier to
@@ -55,7 +80,7 @@ class AreaBank(object):
     EXIT_MODE01 = 4
     EXIT_MODE02 = 5
     UNKWN_06 = 6
-    UNKWN_07 = 7
+    INSTANT = 7
     UNKWN_08 = 8
     UNKWN_09 = 9
     UNKWN_10 = 10
@@ -89,6 +114,40 @@ class AreaBank(object):
     UNKWN_38 = 38
     UNKWN_39 = 39
 
+
+class CNAreaBank(object):
+    """
+    Defines the Bank Identifiers for ComNav Area Queries
+
+    By identifying the bank and breaking it down, it makes the code
+    MUCH easier to read for others.  It also makes the code easier to
+    debug down the road.
+
+    This list has been purely generated through reverse engineering the
+    information available to me using the existing Ultrasync Alarm Panel
+    interface.
+
+    """
+
+    ARMED = 0
+    PARTIAL = 1
+    UNKWN_02 = 2
+    UNKWN_03 = 3
+    UNKWN_04 = 4
+    UNKWN_05 = 5
+    UNKWN_06 = 6
+    EXIT_MODE01 = 7
+    EXIT_MODE02 = 8
+    UNKWN_09 = 9
+    UNKWN_10 = 10
+    UNKWN_11 = 11
+    UNKWN_12 = 12
+    UNKWN_13 = 13
+    UNKWN_14 = 14
+    CHIME = 15
+    UNKWN_16 = 16
+
+
 class AreaStatus(object):
     """
     Defines the panel display area status
@@ -105,7 +164,7 @@ class AreaStatus(object):
 
     NOT_READY = 'Not Ready'
 
-    NOT_READY_FORCEABLE = 'Not Ready*'
+    NOT_READY_FORCEABLE = 'Not Ready'
 
     DISARMED = 'Disarm'
 
@@ -125,7 +184,7 @@ AREA_STATES = (
     'Fire Alarm',
     'Burg Alarm',
     'Panic Alarm',
-    'Auxiliary Alarm',
+    'Medical Alarm',
     AreaStatus.EXIT_DELAY_1,
     AreaStatus.EXIT_DELAY_2,
     AreaStatus.ENTRY_DELAY,
@@ -166,6 +225,9 @@ class ZoneBank(object):
     UNKWN_11 = 11
     UNKWN_12 = 12
     UNKWN_13 = 13
+
+    # The following 4 bank ID's below are only available on the Informix
+    # ZeroWire
     UNKWN_14 = 14
     UNKWN_15 = 15
     UNKWN_16 = 16
@@ -179,6 +241,7 @@ class ZoneStatus(object):
 
     READY = 'Ready'
     NOT_READY = 'Not Ready'
+
 
 ZONE_STATES = (
     ZoneStatus.NOT_READY,
@@ -213,7 +276,6 @@ class AlarmScene(object):
 
     # Alarm system is disarmed
     DISARMED = 'disarm'
-
 
 
 # A list of all valid alarm states used for validating
