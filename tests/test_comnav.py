@@ -57,10 +57,34 @@ def test_comnav_communication(mock_post):
     # A zone response object
     zrobj = mock.Mock()
 
-    # Simulate a valid login return
+    # Simulate initial zone configuration
     with open(join(ULTRASYNC_TEST_VAR_DIR, 'zones.htm'), 'rb') as f:
         zrobj.content = f.read()
     zrobj.status_code = requests.codes.ok
+
+    # A sequence response object
+    seq_obj = mock.Mock()
+
+    # Simulate initial sequence configuration
+    with open(join(ULTRASYNC_TEST_VAR_DIR, 'seq.xml'), 'rb') as f:
+        seq_obj.content = f.read()
+    seq_obj.status_code = requests.codes.ok
+
+    # A zone state response object
+    zst_obj = mock.Mock()
+
+    # Simulate initial zone fetch configuration
+    with open(join(ULTRASYNC_TEST_VAR_DIR, 'zstate.xml'), 'rb') as f:
+        zst_obj.content = f.read()
+    zst_obj.status_code = requests.codes.ok
+
+    # An area state response object
+    ast_obj = mock.Mock()
+
+    # Simulate initial area status fetch configuration
+    with open(join(ULTRASYNC_TEST_VAR_DIR, 'status.xml'), 'rb') as f:
+        ast_obj.content = f.read()
+    ast_obj.status_code = requests.codes.ok
 
     # Assign our response object to our mocked instance of requests
     mock_post.side_effect = (arobj, zrobj)
@@ -117,3 +141,30 @@ def test_comnav_communication(mock_post):
     assert uobj.zones[bank]['status'] == 'Ready'
     # At this time; this flag isn't being detected
     assert uobj.zones[bank]['can_bypass'] is None
+
+    # A call to login.cgi (which fetches area.html) and then zones.htm
+    assert mock_post.call_count == 2
+    assert mock_post.call_args_list[0][0][0] == 'http://zerowire/login.cgi'
+    assert mock_post.call_args_list[1][0][0] == 'http://zerowire/user/zones.htm'
+    
+    # Reset our mock object
+    mock_post.reset_mock()
+
+    # Update our side effects
+    mock_post.side_effect = (seq_obj, ast_obj, zst_obj)
+
+    # Perform Updated Query
+    uobj.update(max_age_sec=0)
+    assert mock_post.call_count == 3
+    assert mock_post.call_args_list[0][0][0] == 'http://zerowire/user/seq.xml'
+    assert mock_post.call_args_list[1][0][0] == 'http://zerowire/user/zstate.xml'
+    assert mock_post.call_args_list[2][0][0] == 'http://zerowire/user/status.xml'
+
+    assert isinstance(uobj.areas, dict)
+    assert len(uobj.areas) == 1
+    assert uobj.areas[0]['name'] == 'Area 1'
+    assert uobj.areas[0]['bank'] == 0
+    # Our sequence got bumped
+    assert uobj.areas[0]['sequence'] == 105
+    assert uobj.areas[0]['status'] == 'Not Ready'
+

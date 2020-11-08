@@ -97,7 +97,7 @@ class UltraSync(UltraSyncConfig):
         # Our zones get populated after we connect
         self.zones = {}
         self._zbank = None
-        self.__zsequence = None
+        self._zsequence = None
 
         # Virtual bank for tracking individual sensor
         self._zvbank = {}
@@ -247,11 +247,6 @@ class UltraSync(UltraSyncConfig):
                 'path': '/user/zones.htm',
             },
 
-            # Room URL
-            'rooms.htm': {
-                'path': '/user/rooms.htm',
-            },
-
             # Config Main Screen
             'config2.htm': {
                 'path': '/muser/config2.htm',
@@ -278,6 +273,12 @@ class UltraSync(UltraSyncConfig):
                 'seq.json': {
                     'path': '/user/seq.json',
                 },
+
+                # Room URL
+                'rooms.htm': {
+                    'path': '/user/rooms.htm',
+                },
+
                 'connect.xml': {
                     'path': '/protect/randmenu.xml',
                     'payload': {
@@ -323,6 +324,14 @@ class UltraSync(UltraSyncConfig):
                     'minc': 'protect/area.xml'
                 }} for no in range(0, 4)})
 
+            # zstate.json - All Zones
+            urls.update({'zstate.{}.json'.format(no + 1): {
+                'path': '/user/zstate.json',
+                'payload': {
+                    'sess': self.session_id,
+                    'state': no,
+                }} for no in range(0, 16)})
+
         else:  # self.vendor is NX595EVendor.COMNAV
 
             urls.update({
@@ -339,6 +348,14 @@ class UltraSync(UltraSyncConfig):
                     'sess': self.session_id,
                     'arsel': no,
                 }} for no in range(0, 4)})
+
+            # zstate.xml - All Zones
+            urls.update({'zstate.{}.xml'.format(no + 1): {
+                'path': '/user/zstate.xml',
+                'payload': {
+                    'sess': self.session_id,
+                    'state': no,
+                }} for no in range(0, 12)})
 
         for to_file, kwargs in urls.items():
             response = self.__get(rtype=HubResponseType.RAW, **kwargs)
@@ -430,7 +447,8 @@ class UltraSync(UltraSyncConfig):
         if ref is None:
             ref = datetime.now()
 
-        if (self.__updated + timedelta(seconds=max_age_sec)) <= ref:
+        if not max_age_sec or \
+                (self.__updated + timedelta(seconds=max_age_sec)) <= ref:
             # Perform a sequence check; these trigger subsequent
             # checks if required
             if not self._sequence():
@@ -998,7 +1016,7 @@ class UltraSync(UltraSyncConfig):
                 # No match and/or bad login
                 return False
             # Store our sequence
-            self.__zsequence = json.loads(match.group('sequence'))
+            self._zsequence = json.loads(match.group('sequence'))
 
         else:  # self.vendor is NX595EVendor.COMNAV
             # It looks like this in the zone.htm response:
@@ -1009,7 +1027,7 @@ class UltraSync(UltraSyncConfig):
             if not match:
                 # No match and/or bad login
                 return False
-            self.__zsequence = json.loads(
+            self._zsequence = json.loads(
                 '[{}]'.format(match.group('sequence')))
 
         #
@@ -1207,8 +1225,14 @@ class UltraSync(UltraSyncConfig):
         if not response:
             return None
 
-        self.areas[bank]['bank_state'] = \
-            [int(response.find('stat{}'.format(x)).text) for x in range(0, 17)]
+        try:
+            self.areas[bank]['bank_state'] = \
+                [int(response.find('stat{}'.format(x)).text)
+                 for x in range(0, 17)]
+
+        except AttributeError:
+            # <statX> stanza was not found
+            return None
 
         return response
 
@@ -1293,8 +1317,13 @@ class UltraSync(UltraSyncConfig):
             return None
 
         # Update our bank states
-        self._zbank[bank] = \
-            [int(x) for x in response.find('zdat').text.split(',')]
+        try:
+            for no, val in enumerate(response.find('zdat').text.split(',')):
+                self._zbank[no][bank] = int(val)
+
+        except AttributeError:
+            # <zdat> stanza was not found
+            return None
 
         return response
 
@@ -1348,11 +1377,11 @@ class UltraSync(UltraSyncConfig):
         perform_zone_update = False
 
         # Process Zones/Sensors first
-        for bank, sequence in enumerate(self.__zsequence):
+        for bank, sequence in enumerate(self._zsequence):
             if sequence != response['zone'][bank]:
                 logger.debug('Zone {} sequence changed'.format(bank + 1))
                 # We need to update our status here
-                self._zbank[bank] = response['zone'][bank]
+                self._zsequence[bank] = response['zone'][bank]
                 self._zone_status_update(bank=bank)
                 perform_zone_update = True
 
@@ -1367,7 +1396,7 @@ class UltraSync(UltraSyncConfig):
 
         if perform_zone_update:
             # Update our zone sequence
-            self.__zsequence = response['zone']
+            self._zsequence = response['zone']
 
             # Process all of our triggered zones/sensors
             self.process_zones()
@@ -1410,16 +1439,25 @@ class UltraSync(UltraSyncConfig):
         if not response:
             return None
 
-        # Update our zone sequences
-        z_seq = [int(x) for x in response.find('zones').text.split(',')]
-        a_seq = [int(x) for x in response.find('areas').text.split(',')]
+        perform_area_update = False
+        perform_zone_update = False
 
         # Process Zones/Sensors first
-        for bank, sequence in enumerate(self.__zsequence):
-            if sequence != z_seq[bank]:
+        # Update our zone sequences
+        try:
+            z_seq = [int(x) for x in response.find('zones').text.split(',')]
+            a_seq = [int(x) for x in response.find('areas').text.split(',')]
+
+        except AttributeError:
+            # <zones> and/or <areas> stanza was not found
+            return None
+
+        # Process Zones/Sensors first
+        for bank, sequence in enumerate(z_seq):
+            if sequence != self._zsequence[bank]:
                 logger.debug('Zone {} sequence changed'.format(bank + 1))
-                # We need to update our status here
-                self._zbank[bank] = z_seq[bank]
+                # We need to update our sequence here
+                self._zsequence[bank] = z_seq[bank]
                 self._zone_status_update(bank=bank)
                 perform_zone_update = True
 
@@ -1433,15 +1471,14 @@ class UltraSync(UltraSyncConfig):
                 perform_area_update = True
 
         if perform_zone_update:
-            # Update our zone sequence
-            self.__zsequence = response['zone']
-
             # Process all of our triggered zones/sensors
             self.process_zones()
 
         if perform_area_update:
             # Process all of our triggered areas
             self.process_areas()
+
+        return response
 
     def __get(self, path, payload=None, rtype=HubResponseType.RAW,
               method='POST', auth_on_fail=True):
@@ -1538,7 +1575,7 @@ class UltraSync(UltraSyncConfig):
         elif rtype is HubResponseType.XML:
             try:
                 response = ET.fromstring(
-                    request.content.decode(self.panel_encoding)).getroot()
+                    request.content.decode(self.panel_encoding))
 
             except ParseError:
                 logger.error(

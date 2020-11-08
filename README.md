@@ -1,5 +1,5 @@
-# Interlogix UltraSync ZeroWire Hub
-[Interlogix](https://www.interlogix.com/) provides security solutions. One of which is their [Self Contained (ZeroWire) Hub](https://www.interlogix.com/intrusion/product/ultrasync-selfcontained-hub):<br/>![ZeroWire Hub Image](https://raw.githubusercontent.com/caronc/ultrasync/master/static/zerowire_hub.jpeg)
+# NX-595 UltraSync Hub
+Compatible with both ComNav and [Interlogix](https://www.interlogix.com/) security solutions. One of which is their [Self Contained (ZeroWire) Hub](https://www.interlogix.com/intrusion/product/ultrasync-selfcontained-hub):<br/>![ZeroWire Hub Image](https://raw.githubusercontent.com/caronc/ultrasync/master/static/zerowire_hub.jpeg)
 
 This is just a small library and accompaning CLI tool I wrote to allow me to interface with it.
 
@@ -12,9 +12,9 @@ This is just a small library and accompaning CLI tool I wrote to allow me to int
    ```
 
 2. Create a configuration file that identifies:
-   1. The location the ZeroWire hub can be found on in your local nework.
-   1. Your ZeroWire login User ID
-   1. Your ZeroWire login pin
+   1. The location the ComNav/ZeroWire hub can be found on in your local nework.
+   1. Your ComNav/ZeroWire login User ID
+   1. Your ComNav/ZeroWire login pin
 
    **Note**: You can only be logged into the ZeroWire hub with the same user *once*; a subsequent login with the same user logs out the other. Since this tool/software actively polls and maintains a login session to your Hub, it can prevent you from being able to log into at the same time elsewhere (via it's website).  It is strongly recommended you create a second user account on your Hub dedicated to just this service.
 
@@ -57,7 +57,7 @@ This is just a small library and accompaning CLI tool I wrote to allow me to int
   # A live monitoring of your home security system:
   ultrasync --watch
   ```
-- You can generate a snapshot (in JSON format) that greatly details everything taking place through your security home setup. It provides MUCH greater detail than the `--watch` process and will eventually become the key that will make integration with [Home Assistant](https://www.home-assistant.io/) possible *eventually*.
+- You can generate a snapshot (in JSON format) that greatly details everything taking place through your security home setup. It provides MUCH greater detail than the `--watch` which allows it to also be integrated with [Home Assistant](https://www.home-assistant.io/).
   ```bash
   # Print a JSON formated snapshot of all home security details
   ultrasync --details
