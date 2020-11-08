@@ -1541,7 +1541,7 @@ class UltraSync(UltraSyncConfig):
             }
 
         # Prepare our URL
-        url = 'http://{}{}'.format(self.host, path)
+        url = '{}{}'.format(self.url, path)
 
         logger.trace('{} {} Request to {}'.format(rtype.upper(), method, url))
 
@@ -1551,14 +1551,14 @@ class UltraSync(UltraSyncConfig):
             if method == 'POST':
                 # Make our POST request
                 request = self.session.post(
-                    url, data=payload, headers=headers, timeout=self.timeout,
-                    allow_redirects=False)
+                    url, data=payload, auth=self.auth, headers=headers,
+                    timeout=self.timeout, allow_redirects=False)
 
             else:
                 # Make our request
                 request = self.session.get(
-                    url, data=payload, headers=headers, timeout=self.timeout,
-                    allow_redirects=False)
+                    url, data=payload, auth=self.auth, headers=headers,
+                    timeout=self.timeout, allow_redirects=False)
 
             logger.trace('URL: {}, status_code: {}'.format(
                 url, request.status_code))
