@@ -109,7 +109,7 @@ def test_comnav_communication(mock_post):
     assert isinstance(uobj.zones, dict)
     # we have 8 zones defined in our test file spread across
     # different banks:
-    assert len(uobj.zones) == 4
+    assert len(uobj.zones) == 8
     bank = 0
     assert uobj.zones[bank]['name'] == 'Sensor 1'
     assert uobj.zones[bank]['bank'] == bank
@@ -144,9 +144,11 @@ def test_comnav_communication(mock_post):
 
     # A call to login.cgi (which fetches area.html) and then zones.htm
     assert mock_post.call_count == 2
-    assert mock_post.call_args_list[0][0][0] == 'http://zerowire/login.cgi'
-    assert mock_post.call_args_list[1][0][0] == 'http://zerowire/user/zones.htm'
-    
+    assert mock_post.call_args_list[0][0][0] == \
+        'http://zerowire/login.cgi'
+    assert mock_post.call_args_list[1][0][0] == \
+        'http://zerowire/user/zones.htm'
+
     # Reset our mock object
     mock_post.reset_mock()
 
@@ -156,9 +158,12 @@ def test_comnav_communication(mock_post):
     # Perform Updated Query
     uobj.update(max_age_sec=0)
     assert mock_post.call_count == 3
-    assert mock_post.call_args_list[0][0][0] == 'http://zerowire/user/seq.xml'
-    assert mock_post.call_args_list[1][0][0] == 'http://zerowire/user/zstate.xml'
-    assert mock_post.call_args_list[2][0][0] == 'http://zerowire/user/status.xml'
+    assert mock_post.call_args_list[0][0][0] == \
+        'http://zerowire/user/seq.xml'
+    assert mock_post.call_args_list[1][0][0] == \
+        'http://zerowire/user/zstate.xml'
+    assert mock_post.call_args_list[2][0][0] == \
+        'http://zerowire/user/status.xml'
 
     assert isinstance(uobj.areas, dict)
     assert len(uobj.areas) == 1
@@ -167,4 +172,3 @@ def test_comnav_communication(mock_post):
     # Our sequence got bumped
     assert uobj.areas[0]['sequence'] == 105
     assert uobj.areas[0]['status'] == 'Not Ready'
-

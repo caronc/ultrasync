@@ -30,6 +30,7 @@ import os
 import math
 import xml.etree.ElementTree as ET
 from xml.etree.ElementTree import ParseError
+from zipfile import ZipFile
 from datetime import datetime
 from datetime import timedelta
 from .common import (
@@ -89,6 +90,12 @@ class UltraSync(UltraSyncConfig):
         # User Status codes
         self.__is_master = None
         self.__is_installer = None
+
+        # ComNav devices include a System Fault (sysflt) keyword in it's status
+        # return at times.  If this value is set, we set it here.  ComNav
+        # devices detect the alarm panel display setting on its own if this
+        # value isn't set.
+        self.__cn_area_status = None
 
         # Taken straight out of Informix ZeroWire status.js
         self.__zw_area_state_byte = [
@@ -221,7 +228,7 @@ class UltraSync(UltraSyncConfig):
 
         return True
 
-    def debug_dump(self, path=None, mode=0o755):
+    def debug_dump(self, path=None, mode=0o755, compress=False):
         """
         Useful for checking for differences in alarm readings over time.
 
@@ -234,7 +241,6 @@ class UltraSync(UltraSyncConfig):
             return False
 
         logger.info('Performing a debug dump to: {}'.format(path))
-        os.mkdir(path, mode=mode)
 
         urls = {
             # Area URL
@@ -257,10 +263,6 @@ class UltraSync(UltraSyncConfig):
                 'path': '{}/master.js'.format(self.__panel_url_path),
                 'method': 'GET'
             },
-            'zwave.js': {
-                'path': '{}/zwave.js'.format(self.__panel_url_path),
-                'method': 'GET'
-            },
             'status.js': {
                 'path': '{}/status.js'.format(self.__panel_url_path),
                 'method': 'GET'
@@ -272,6 +274,11 @@ class UltraSync(UltraSyncConfig):
                 # Used to acquire sequence
                 'seq.json': {
                     'path': '/user/seq.json',
+                },
+
+                'zwave.js': {
+                    'path': '{}/zwave.js'.format(self.__panel_url_path),
+                    'method': 'GET'
                 },
 
                 # Room URL
@@ -357,16 +364,32 @@ class UltraSync(UltraSyncConfig):
                     'state': no,
                 }} for no in range(0, 12)})
 
-        for to_file, kwargs in urls.items():
-            response = self.__get(rtype=HubResponseType.RAW, **kwargs)
-            if not response:
-                continue
+        if compress:
+            with ZipFile('{}.zip'.format(path), 'w') as myzip:
+                for to_file, kwargs in urls.items():
+                    response = self.__get(rtype=HubResponseType.RAW, **kwargs)
+                    if not response:
+                        continue
 
-            with open(os.path.join(path, to_file), 'w',
-                      encoding=self.panel_encoding) as fp:
-                # Write our content to disk
-                _bytes = fp.write(response)
-                logger.info('Wrote {} bytes to {}'.format(_bytes, to_file))
+                    logger.info('Adding {} ({} bytes) to {}'.format(
+                        to_file, len(response),
+                        '{}.zip'.format(os.path.basename(path))))
+                    myzip.writestr(
+                        os.path.join(
+                            os.path.basename(path), to_file), response)
+
+        else:
+            for to_file, kwargs in urls.items():
+                response = self.__get(rtype=HubResponseType.RAW, **kwargs)
+                if not response:
+                    continue
+
+                os.mkdir(path, mode=mode)
+                with open(os.path.join(path, to_file), 'w',
+                          encoding=self.panel_encoding) as fp:
+                    # Write our content to disk
+                    _bytes = fp.write(response)
+                    logger.info('Wrote {} bytes to {}'.format(_bytes, to_file))
 
     def set(self, area=1, state=AlarmScene.DISARMED):
         """
@@ -379,13 +402,16 @@ class UltraSync(UltraSyncConfig):
         if state not in ALARM_SCENES:
             return False
 
+        # Start our payload off with our session identifier
         payload = {
             'sess': self.session_id,
-            'start': int(math.floor((area - 1) / 8)),
-            'mask': 1 << (area - 1) % 8,
         }
 
         if self.vendor is NX595EVendor.ZEROWIRE:
+            payload.update({
+                'start': int(math.floor((area - 1) / 8)),
+                'mask': 1 << (area - 1) % 8,
+            })
 
             if state == AlarmScene.STAY:
                 payload.update({
@@ -407,9 +433,9 @@ class UltraSync(UltraSyncConfig):
         else:  # self.vendor is NX595EVendor.COMNAV
 
             payload.update({
-                'comm': '80',
-                'data0': '2',
-                'data1': '',
+                'comm': 80,
+                'data0': 2,
+                'data1': 1 << (area - 1) % 8,
             })
 
             if state == AlarmScene.STAY:
@@ -764,11 +790,11 @@ class UltraSync(UltraSyncConfig):
             # Priority, the lower, the higher it is; 6 being the lowest
             priority = 6
 
-            # Now we'll attempt to detect our status
-            status = None
-
             # Our initial index starting point
             bank_no = 3 if st_exit1 or st_exit2 else 0
+
+            # Now we'll attempt to detect our status if required
+            status = self.__cn_area_status if self.__cn_area_status else None
 
             while not status:
 
@@ -1091,9 +1117,10 @@ class UltraSync(UltraSyncConfig):
         # Store our Zones ('%21' == '!'; these are un-used sensors)
         self.zones = \
             {x: {'name': unquote(y).strip()
-                 if unquote(y).strip() else '{}'.format(x + 1), 'bank': x}
+                 if unquote(y).strip()
+                 else 'Sensor {}'.format(x + 1), 'bank': x}
              for x, y in enumerate(zone_names)
-             if y != '%21' and y != '!' and y != ''}
+             if y != '%21' and y != '!'}
 
         #
         # Get our Master Status
@@ -1224,6 +1251,15 @@ class UltraSync(UltraSyncConfig):
             '/user/status.xml', rtype=HubResponseType.XML, payload=payload)
         if not response:
             return None
+
+        try:
+            # Store our Fault Status (if set)
+            self.__cn_area_status = response.find('sysflt').text.strip()
+
+        except AttributeError:
+            # Not set (or not found); either way we don't need to
+            # worry... set our flag to None and move along...
+            self.__cn_area_status = None
 
         try:
             self.areas[bank]['bank_state'] = \
@@ -1416,6 +1452,13 @@ class UltraSync(UltraSyncConfig):
               <areas>124</areas>
               <zones>21,0,0,10,0,0,0,0,0,0,0,1,0,0</zones>
             </response>
+
+        Some older models, will only have a response like so:
+            <response>
+              <areas>124</areas>
+              <zones>21,0</zones>
+            </response>
+
 
         A sequence is a way of polling the panel to see if there is anything
         new to report. If there are no changes, then the sequence values
