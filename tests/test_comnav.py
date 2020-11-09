@@ -109,7 +109,7 @@ def test_comnav_communication(mock_post):
     assert isinstance(uobj.zones, dict)
     # we have 8 zones defined in our test file spread across
     # different banks:
-    assert len(uobj.zones) == 8
+    assert len(uobj.zones) == 4
     bank = 0
     assert uobj.zones[bank]['name'] == 'Sensor 1'
     assert uobj.zones[bank]['bank'] == bank

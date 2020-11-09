@@ -83,9 +83,9 @@ class UltraSync(UltraSyncConfig):
 
         # We need to track the vendor as it greatly impacts how we parse our
         # results
-        self.vendor = None
-        self.version = None
-        self.release = None
+        self.vendor = "Unknown"
+        self.version = "0.000"
+        self.release = ""
 
         # User Status codes
         self.__is_master = None
@@ -681,18 +681,18 @@ class UltraSync(UltraSyncConfig):
             status = None
 
             # Our initial index starting point
-            bank_no = 3 if st_exit1 or st_exit2 else 0
+            idx = 3 if st_exit1 or st_exit2 else 0
 
             while not status:
 
-                if bank_no >= len(AREA_STATES):
+                if idx >= len(AREA_STATES):
                     # Set status
                     status = AreaStatus.READY
                     break
 
-                if vbank[int(self.__zw_area_state_byte[bank_no] / 2)]:
+                if vbank[int(self.__zw_area_state_byte[idx] / 2)]:
                     if st_partial:
-                        status = AREA_STATES[bank_no]
+                        status = AREA_STATES[idx]
                         if status in (AreaStatus.ARMED_STAY,
                                       AreaStatus.EXIT_DELAY_1,
                                       AreaStatus.EXIT_DELAY_2):
@@ -706,9 +706,9 @@ class UltraSync(UltraSyncConfig):
                     if status == AreaStatus.EXIT_DELAY_1:
                         # Bump to EXIT_DELAY_2; we'll eventually hit
                         # the bottom of our while loop and move past that too
-                        bank_no += 1
+                        idx += 1
 
-                elif AREA_STATES[bank_no] == AreaStatus.READY \
+                elif AREA_STATES[idx] == AreaStatus.READY \
                         and not (st_armed or st_partial):
                     # Update
                     status = AreaStatus.NOT_READY \
@@ -716,7 +716,7 @@ class UltraSync(UltraSyncConfig):
                         else AreaStatus.NOT_READY_FORCEABLE
 
                 # increment our index by one
-                bank_no += 1
+                idx += 1
 
             if vbank[ZWAreaBank.UNKWN_08] or vbank[ZWAreaBank.UNKWN_09] or \
                     vbank[ZWAreaBank.UNKWN_10] or vbank[ZWAreaBank.UNKWN_11]:
@@ -790,34 +790,34 @@ class UltraSync(UltraSyncConfig):
             # Priority, the lower, the higher it is; 6 being the lowest
             priority = 6
 
-            # Our initial index starting point
-            bank_no = 3 if st_exit1 or st_exit2 else 0
+            # Now we'll attempt to detect our status
+            status = None
 
-            # Now we'll attempt to detect our status if required
-            status = self.__cn_area_status if self.__cn_area_status else None
+            # Our initial index starting point
+            idx = 3 if st_exit1 or st_exit2 else 0
 
             while not status:
 
-                if bank_no >= len(AREA_STATES):
+                if idx >= len(AREA_STATES):
                     # Set status
                     status = AreaStatus.READY
                     break
 
                     if st_partial:
-                        status = AREA_STATES[bank_no]
+                        status = AREA_STATES[idx]
 
                     if status == AreaStatus.EXIT_DELAY_1:
                         # Bump to EXIT_DELAY_2; we'll eventually hit
                         # the bottom of our while loop and move past that too
-                        bank_no += 1
+                        idx += 1
 
-                elif AREA_STATES[bank_no] == AreaStatus.READY \
+                elif AREA_STATES[idx] == AreaStatus.READY \
                         and not (st_armed or st_partial):
                     # Update
                     status = AreaStatus.NOT_READY
 
                 # increment our index by one
-                bank_no += 1
+                idx += 1
 
             if vbank[CNAreaBank.UNKWN_03] or vbank[CNAreaBank.UNKWN_04] or \
                     vbank[CNAreaBank.UNKWN_05] or vbank[CNAreaBank.UNKWN_06]:
@@ -1114,13 +1114,17 @@ class UltraSync(UltraSyncConfig):
                 return False
             zone_names = json.loads('[{}]'.format(match.group('zone_names')))
 
+        # v0.106 does not support naming of zones. Determine if we're
+        # this version
+        zone_naming = True if float(self.version) >= 0.106 else False
+
         # Store our Zones ('%21' == '!'; these are un-used sensors)
         self.zones = \
             {x: {'name': unquote(y).strip()
                  if unquote(y).strip()
                  else 'Sensor {}'.format(x + 1), 'bank': x}
              for x, y in enumerate(zone_names)
-             if y != '%21' and y != '!'}
+             if y != '%21' and y != '!' and (y != '' and zone_naming)}
 
         #
         # Get our Master Status
