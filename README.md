@@ -1,8 +1,8 @@
 # NX-595E UltraSync Hub
 
-Compatible with both NX-595E Hills ComNav and [Interlogix](https://www.interlogix.com/) security solutions. One of which is their [Self Contained (ZeroWire) Hub](https://www.interlogix.com/intrusion/product/ultrasync-selfcontained-hub):<br/>![ZeroWire Hub Image](https://raw.githubusercontent.com/caronc/ultrasync/master/static/zerowire_hub.jpeg)
+Compatible with both NX-595E [Hills](https://www.hills.com.au/) ComNav and [Interlogix](https://www.interlogix.com/) [ZeroWire](https://www.interlogix.com/intrusion/product/ultrasync-selfcontained-hub) UltraSync solutions.
 
-This library allows basic communication to it an is the core component of it's integration into Home Assistant.
+![ZeroWire Hub Image](https://raw.githubusercontent.com/caronc/ultrasync/master/static/zerowire_hub.jpeg)
 
 [![Paypal](https://img.shields.io/badge/paypal-donate-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=MHANV39UZNQ5E)
 
@@ -66,7 +66,7 @@ This library allows basic communication to it an is the core component of it's i
   ultrasync --watch
   ```
 
-- You can generate a snapshot (in JSON format) that greatly details everything taking place through your security home setup. It provides MUCH greater detail than the `--watch` which allows it to also be integrated with [Home Assistant](https://www.home-assistant.io/).
+- You can generate a snapshot (in JSON format) that greatly details everything taking place through your security home setup. It provides MUCH greater detail than the `--watch` which allows it to also be integrated with [Home Assistant](https://www.home-assistant.io/integrations/ultrasync/).
 
   ```bash
   # Print a JSON formatted snapshot of all home security details
