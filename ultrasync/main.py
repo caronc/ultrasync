@@ -227,10 +227,12 @@ class UltraSync(UltraSyncConfig):
 
         return True
 
-    def debug_dump(self, path=None, mode=0o755, compress=False):
+    def debug_dump(self, path=None, mode=0o755, compress=False, progress=None):
         """
         Useful for checking for differences in alarm readings over time.
 
+        if a progress object is passed in, the 'update()' function within the
+        passed in object relative to a ratio of 100%
         """
         if path is None:
             path = datetime.now().strftime('%Y%m%d%H%M%S.ultrasync-dump')
@@ -363,19 +365,25 @@ class UltraSync(UltraSyncConfig):
                     'state': no,
                 }} for no in range(0, 12)})
 
+        progress_ratio = 100.0 / len(urls)
+        progress_track = 0.0
+
         if compress:
             with ZipFile('{}.zip'.format(path), 'w') as myzip:
                 for to_file, kwargs in urls.items():
                     response = self.__get(rtype=HubResponseType.RAW, **kwargs)
                     if not response:
                         continue
-
-                    logger.info('Adding {} ({} bytes) to {}'.format(
+                    logger.debug('Adding {} ({} bytes) to {}'.format(
                         to_file, len(response),
                         '{}.zip'.format(os.path.basename(path))))
                     myzip.writestr(
                         os.path.join(
                             os.path.basename(path), to_file), response)
+
+                    if progress:
+                        progress.update(progress_ratio)
+                        progress_track += progress_ratio
 
         else:
             for to_file, kwargs in urls.items():
@@ -387,8 +395,18 @@ class UltraSync(UltraSyncConfig):
                 with open(os.path.join(path, to_file), 'w',
                           encoding=self.panel_encoding) as fp:
                     # Write our content to disk
-                    _bytes = fp.write(response)
-                    logger.info('Wrote {} bytes to {}'.format(_bytes, to_file))
+                    logger.debug(
+                        'Writing {} bytes to {}'.format(
+                            len(response), to_file))
+
+                    fp.write(response)
+
+                    if progress:
+                        progress.update(progress_ratio)
+                        progress_track += progress_ratio
+
+        progress.update(100.001 - progress_track)
+        return
 
     def set(self, area=1, state=AlarmScene.DISARMED):
         """
@@ -487,11 +505,11 @@ class UltraSync(UltraSyncConfig):
         self.__updated = datetime.now()
         return True
 
-    def details(self):
+    def details(self, max_age_sec=1):
         """
         Arranges the areas and zones into an easy to manage dictionary
         """
-        if not self.update():
+        if not self.update(max_age_sec=max_age_sec):
             return {}
 
         # Build our response object

@@ -96,15 +96,12 @@ def print_version_msg():
               'are "{}", and "{}".'.format(
                   '", "'.join(ALARM_SCENES[:-1]), ALARM_SCENES[-1]))
 @click.option('--debug-dump', is_flag=True,
-              help='Dump tracing files to a directory comparison/debug '
+              help='Dump tracing files to a archive for comparison/debug '
               'purposes.')
-@click.option('--compressed-debug-dump', is_flag=True,
-              help='Dump tracing files for compressed .zip file for '
-              'comparison/debug purposes.')
 @click.option('--verbose', '-v', count=True)
 @click.option('--version', '-V', is_flag=True,
               help='Display the version of the ultrasync library and exit.')
-def main(config, debug_dump, compressed_debug_dump, scene, details, watch,
+def main(config, debug_dump, scene, details, watch,
          verbose, version):
     """
     Wrapper to ultrasync library.
@@ -175,13 +172,11 @@ def main(config, debug_dump, compressed_debug_dump, scene, details, watch,
         print(json.dumps(usync.details(), indent=2, sort_keys=True))
         actioned = True
 
-    if compressed_debug_dump:
-        usync.debug_dump(compress=True)
-        actioned = True
-
-    elif debug_dump:
-        usync.debug_dump(compress=False)
-        actioned = True
+    if debug_dump:
+        with click.progressbar(length=100,
+                       label='Creating debug archive') as bar:
+            usync.debug_dump(compress=True, progress=bar)
+            actioned = True
 
     if scene:
         if not usync.set(state=scene):

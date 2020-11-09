@@ -187,3 +187,17 @@ def test_comnav_0_108_communication(mock_post):
     # Our sequence got bumped
     assert uobj.areas[0]['sequence'] == 179
     assert uobj.areas[0]['status'] == 'Ready'
+
+    # Reset our mock object
+    mock_post.reset_mock()
+
+    # Update our side effects
+    mock_post.side_effect = seq_obj
+
+    uobj.details(max_age_sec=0)
+
+    # Only 1 query made because seq.xml file unchanged
+    assert mock_post.call_count == 1
+    assert mock_post.call_args_list[0][0][0] == \
+        'http://zerowire/user/seq.xml'
+    assert uobj.areas[0]['sequence'] == 179
