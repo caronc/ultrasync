@@ -1,6 +1,6 @@
 <response>
   <abank>0</abank>
-  <aseq>125</aseq>
+  <aseq>178</aseq>
   <stat0>0</stat0>
   <stat1>0</stat1>
   <stat2>0</stat2>
@@ -17,6 +17,7 @@
   <stat13>0</stat13>
   <stat14>0</stat14>
   <stat15>0</stat15>
-  <stat16>0</stat16>
+  <stat16>1</stat16>
   <sysflt>No System Faults</sysflt>
  </response>
+

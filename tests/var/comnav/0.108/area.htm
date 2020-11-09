@@ -1,24 +1,23 @@
-
 <!doctype html>
 <html>
 <head>
-	<meta charset="ISO-8859-1">
+	<meta charset="UTF-8">
 	<title>ComNav :: Secure Network</title>
 	<meta name="viewport" content="initial-scale=1.0, width=device-width, maximum-scale = 1.0, minimum-scale = 1.0" />
-	<link href="/v_CN_0.106-j/m.css" rel="stylesheet">
-	<script src="/v_CN_0.106-j/master.js" charset="utf-8"></script>
-	<script src="/v_CN_0.106-j/status.js" charset="utf-8"></script>
+	<link href="/v_CN_0.108-m/m.css" rel="stylesheet">
+	<script src="/v_CN_0.108-m/master.js" charset="utf-8"></script>
+	<script src="/v_CN_0.108-m/status.js" charset="utf-8"></script>
+  	<script src="/v_CN_0.108-m/lang_engau.js" charset="utf-8"></script> 
+	
 </head>
 <body onload = "afterLoad();">
 	<script>
 	var areaDisplay = new Array(0);
 
-	var areaStates = new Array("Armed Away", "Armed Stay", "Ready","Fire Alarm","Burg Alarm","Panic Alarm","Medical Alarm","Exit Delay"
-		,"Exit Delay 2","Entry Delay","Zone Bypass","Zone Trouble","Zone Tamper","Zone Low Battery","Zone Supervision","");
 
-	var areaNames = new Array("","!","!","!","!","!","!","!");
-	var areaSequence = new Array(104);
-	var areaStatus = new Array(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0); 
+	var areaNames = new Array("Home","%21","%21","%21","%21","%21","%21","%21");
+	var areaSequence = new Array(178);
+	var areaStatus = new Array(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1); 
 	var sysStatus;
 	var areaCount = 0;
     var allAway = false;
@@ -27,7 +26,7 @@
     var allpriority = 6;
     var allSequence = 0;
     
-	function getSession(){return "87FCE66F5B718C96";}
+	function getSession(){return "0F76099C29154BAD";}
 	</script>	
 
 	<div id="w">
@@ -41,8 +40,11 @@
 
 	function afterLoad()
 	{
+	    convertNames(areaNames);
+ 		hillsBuild = true;
+ 		variant = 3;
 		buildBanner("ComNav");
-        buildMenu(1,1,1,1,1,1);
+        buildMenu(1,0,0,0,1,1);
 		buildAreas();
 
 		for(var i = (17*12); i < areaStatus.length;i++)
@@ -55,7 +57,13 @@
     // Note: the iPhone will display in the order presented here. see master.jss
     function getMenu()
     {
-      return "[0, [1,1,1,1,1,1,1,1,1,1,1,1]]";
+    	if(hillsBuild)
+      		return "[0, [1,1,1,0,0,0,0,0,0,0,0,0,0]]";
+       	else
+      		if(variant == 1)
+      			return "[0, [1,1,1,0,0,0,0,0,0,0,0,0,0]]";
+     	else
+       		return "[0, [1,1,1,0,0,0,0,0,0,0,0,0,0]]";
     }
 
 	</script>

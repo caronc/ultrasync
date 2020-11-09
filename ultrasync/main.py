@@ -91,11 +91,10 @@ class UltraSync(UltraSyncConfig):
         self.__is_master = None
         self.__is_installer = None
 
-        # ComNav devices include a System Fault (sysflt) keyword in it's status
-        # return at times.  If this value is set, we set it here.  ComNav
-        # devices detect the alarm panel display setting on its own if this
-        # value isn't set.
-        self.__cn_area_status = None
+        # UltraSync devices include a System Fault (sysflt) keyword in it's
+        # status return for older models.  If this value is set, we set it
+        # here.
+        self.__extra_area_status = []
 
         # Taken straight out of Informix ZeroWire status.js
         self.__zw_area_state_byte = [
@@ -799,22 +798,30 @@ class UltraSync(UltraSyncConfig):
             while not status:
 
                 if idx >= len(AREA_STATES):
-                    # Set status
-                    status = AreaStatus.READY
-                    break
+                    if self.__extra_area_status:
+                        status = \
+                            self.__extra_area_status[idx - len(AREA_STATES)]
 
-                    if st_partial:
+                    else:
+                        # Set status
+                        status = AreaStatus.READY
+
+                elif vbank[idx]:
+                    if AREA_STATES[idx] != AreaStatus.READY \
+                            or not (st_armed or st_partial):
+
                         status = AREA_STATES[idx]
 
-                    if status == AreaStatus.EXIT_DELAY_1:
-                        # Bump to EXIT_DELAY_2; we'll eventually hit
-                        # the bottom of our while loop and move past that too
-                        idx += 1
+                        if status == AreaStatus.EXIT_DELAY_1:
+                            # Bump to EXIT_DELAY_2; we'll eventually hit
+                            # the bottom of our while loop and move past that
+                            # too
+                            idx += 1
 
-                elif AREA_STATES[idx] == AreaStatus.READY \
-                        and not (st_armed or st_partial):
-                    # Update
-                    status = AreaStatus.NOT_READY
+                    elif AREA_STATES[idx] == AreaStatus.READY \
+                            and not (st_armed or st_partial):
+                        # Update
+                        status = AreaStatus.NOT_READY
 
                 # increment our index by one
                 idx += 1
@@ -826,7 +833,8 @@ class UltraSync(UltraSyncConfig):
                 priority = 1
 
             elif vbank[CNAreaBank.UNKWN_11] or vbank[CNAreaBank.UNKWN_12] or \
-                    vbank[CNAreaBank.UNKWN_13] or vbank[CNAreaBank.UNKWN_14]:
+                    vbank[CNAreaBank.UNKWN_13] or vbank[CNAreaBank.UNKWN_14] \
+                    or self.__extra_area_status:
 
                 # Assign priority to 2
                 priority = 2
@@ -1101,6 +1109,7 @@ class UltraSync(UltraSyncConfig):
                 # No match and/or bad login
                 return False
             zone_names = json.loads(match.group('zone_names'))
+            zone_naming = True
 
         else:  # self.vendor is NX595EVendor.COMNAV
 
@@ -1113,10 +1122,9 @@ class UltraSync(UltraSyncConfig):
                 # No match and/or bad login
                 return False
             zone_names = json.loads('[{}]'.format(match.group('zone_names')))
-
-        # v0.106 does not support naming of zones. Determine if we're
-        # this version
-        zone_naming = True if float(self.version) >= 0.106 else False
+            # v0.106 does not support naming of zones. Determine if we're
+            # this version
+            zone_naming = True if float(self.version) > 0.106 else False
 
         # Store our Zones ('%21' == '!'; these are un-used sensors)
         self.zones = \
@@ -1124,7 +1132,7 @@ class UltraSync(UltraSyncConfig):
                  if unquote(y).strip()
                  else 'Sensor {}'.format(x + 1), 'bank': x}
              for x, y in enumerate(zone_names)
-             if y != '%21' and y != '!' and (y != '' and zone_naming)}
+             if not zone_naming or (y != '%21' and y != '!' and y != '')}
 
         #
         # Get our Master Status
@@ -1258,12 +1266,13 @@ class UltraSync(UltraSyncConfig):
 
         try:
             # Store our Fault Status (if set)
-            self.__cn_area_status = response.find('sysflt').text.strip()
+            self.__extra_area_status = \
+                re.split(r'\r*\n', response.find('sysflt').text)
 
         except AttributeError:
             # Not set (or not found); either way we don't need to
             # worry... set our flag to None and move along...
-            self.__cn_area_status = None
+            self.__extra_area_status = []
 
         try:
             self.areas[bank]['bank_state'] = \
@@ -1643,4 +1652,6 @@ class UltraSync(UltraSyncConfig):
         """
         if last < 256:
             return last + 1
-        return 0
+
+        # Zero is only used for disabled devices; start sequence at 1
+        return 1

@@ -36,13 +36,14 @@ import logging
 logging.disable(logging.CRITICAL)
 
 # Reference Directory
-ULTRASYNC_TEST_VAR_DIR = join(dirname(__file__), 'var', NX595EVendor.COMNAV)
+ULTRASYNC_TEST_VAR_DIR = \
+    join(dirname(__file__), 'var', NX595EVendor.COMNAV, '0.108')
 
 
 @mock.patch('requests.Session.post')
-def test_comnav_communication(mock_post):
+def test_comnav_0_108_communication(mock_post):
     """
-    Test ComNav Hub Communication
+    Test ComNav v0.108 Hub Communication
 
     """
 
@@ -95,52 +96,46 @@ def test_comnav_communication(mock_post):
     # (in that order)
     assert uobj.login()
     assert uobj.vendor is NX595EVendor.COMNAV
-    assert uobj.version == '0.106'
-    assert uobj.release == 'j'
+    assert uobj.version == '0.108'
+    assert uobj.release == 'm'
 
     assert isinstance(uobj.areas, dict)
     # we only have 1 area defined in our test file
     assert len(uobj.areas) == 1
-    assert uobj.areas[0]['name'] == 'Area 1'
+    assert uobj.areas[0]['name'] == 'Home'
     assert uobj.areas[0]['bank'] == 0
-    assert uobj.areas[0]['sequence'] == 104
-    assert uobj.areas[0]['status'] == 'Not Ready'
+    assert uobj.areas[0]['sequence'] == 178
+    assert uobj.areas[0]['status'] == 'Ready'
 
     assert isinstance(uobj.zones, dict)
-    # we have 8 zones defined in our test file spread across
-    # different banks:
-    assert len(uobj.zones) == 4
-    bank = 0
-    assert uobj.zones[bank]['name'] == 'Sensor 1'
-    assert uobj.zones[bank]['bank'] == bank
-    assert uobj.zones[bank]['sequence'] == 1
-    assert uobj.zones[bank]['status'] == 'Ready'
-    # At this time; this flag isn't being detected
-    assert uobj.zones[bank]['can_bypass'] is None
-
-    bank = 4
-    assert uobj.zones[bank]['name'] == 'Sensor 2'
-    assert uobj.zones[bank]['bank'] == bank
-    assert uobj.zones[bank]['sequence'] == 1
-    assert uobj.zones[bank]['status'] == 'Ready'
-    # At this time; this flag isn't being detected
-    assert uobj.zones[bank]['can_bypass'] is None
-
-    bank = 5
-    assert uobj.zones[bank]['name'] == 'Sensor 3'
-    assert uobj.zones[bank]['bank'] == bank
-    assert uobj.zones[bank]['sequence'] == 1
-    assert uobj.zones[bank]['status'] == 'Ready'
-    # At this time; this flag isn't being detected
-    assert uobj.zones[bank]['can_bypass'] is None
-
-    bank = 11
-    assert uobj.zones[bank]['name'] == 'Sensor 4'
-    assert uobj.zones[bank]['bank'] == bank
-    assert uobj.zones[bank]['sequence'] == 1
-    assert uobj.zones[bank]['status'] == 'Ready'
-    # At this time; this flag isn't being detected
-    assert uobj.zones[bank]['can_bypass'] is None
+    # our total zones defined
+    assert len(uobj.zones) == 17
+    zone_map = [
+        {
+            'bank': 0,
+            'name': 'MasterBed Motion',
+        }, {
+            'bank': 1,
+            'name': 'Living Room Motion',
+        }, {
+            'bank': 2,
+            'name': 'Kitchen/DiningMotion',
+        }, {
+            'bank': 3,
+            'name': 'Theater Motion',
+        }, {
+            'bank': 4,
+            'name': 'Hallway Motion',
+        }
+    ]
+    for entry in zone_map:
+        assert entry['bank'] in uobj.zones
+        assert uobj.zones[entry['bank']]['bank'] == entry['bank']
+        assert uobj.zones[entry['bank']]['name'] == entry['name']
+        assert uobj.zones[entry['bank']]['sequence'] == 1
+        assert uobj.zones[entry['bank']]['status'] == \
+            entry.get('status', 'Ready')
+        assert uobj.zones[entry['bank']]['can_bypass'] is None
 
     # A call to login.cgi (which fetches area.html) and then zones.htm
     assert mock_post.call_count == 2
@@ -157,6 +152,26 @@ def test_comnav_communication(mock_post):
 
     # Perform Updated Query
     uobj.update(max_age_sec=0)
+
+    # Only 1 query made because seq.xml file unchanged
+    assert mock_post.call_count == 1
+    assert mock_post.call_args_list[0][0][0] == \
+        'http://zerowire/user/seq.xml'
+    assert uobj.areas[0]['sequence'] == 178
+
+    # Update our sequence file so that it reflects a change
+    with open(join(ULTRASYNC_TEST_VAR_DIR, 'seq.w.update.xml'), 'rb') as f:
+        seq_obj.content = f.read()
+
+    # Reset our mock object
+    mock_post.reset_mock()
+
+    # Update our side effects
+    mock_post.side_effect = (seq_obj, ast_obj, zst_obj)
+
+    # Perform Updated Query
+    uobj.update(max_age_sec=0)
+
     assert mock_post.call_count == 3
     assert mock_post.call_args_list[0][0][0] == \
         'http://zerowire/user/seq.xml'
@@ -167,8 +182,8 @@ def test_comnav_communication(mock_post):
 
     assert isinstance(uobj.areas, dict)
     assert len(uobj.areas) == 1
-    assert uobj.areas[0]['name'] == 'Area 1'
+    assert uobj.areas[0]['name'] == 'Home'
     assert uobj.areas[0]['bank'] == 0
     # Our sequence got bumped
-    assert uobj.areas[0]['sequence'] == 105
-    assert uobj.areas[0]['status'] == 'Not Ready'
+    assert uobj.areas[0]['sequence'] == 179
+    assert uobj.areas[0]['status'] == 'Ready'

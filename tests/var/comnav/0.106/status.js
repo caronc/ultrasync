@@ -156,7 +156,7 @@ function buildArea(area)
         <button type="button" class="bc"><div class="bi"></div>Chime</button>';
 
         if(area == 0)
-            div1.getElementsByTagName('h1')[0].innerHTML = miscLabels[0];
+            div1.getElementsByTagName('h1')[0].innerHTML = "All Areas";
         else
             div1.getElementsByTagName('h1')[0].innerHTML = areaNames[area-1];
  
@@ -366,7 +366,7 @@ function buildAreas()
     for(; j < areaNames.length+1;j++)
     {  
         if( areaNames[j-1] == "")
-            areaNames[j-1] = config7NamesLab[3+j]; 
+            areaNames[j-1] = "Area "+j; 
         if(areaNames[j-1] != "!")
             buildArea(j)
         else

@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="ISO-8859-1">
+  <title>ComNav :: Secure Network</title>
+  <meta name="viewport" content="initial-scale=1.0, width=device-width, maximum-scale = 1.0, minimum-scale = 1.0" />
+  <link href="/v_CN_0.106-j/m.css" rel="stylesheet">
+  <script src="/v_CN_0.106-j/master.js" charset="utf-8"></script>
+  <script src="/v_CN_0.106-j/status.js" charset="utf-8"></script>
+</head>
+<body onload = "afterLoad();">
+  <script>
+  var zoneDisplay = new Array(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+  var zoneStates = new Array("Not Ready", "Tamper", "Trouble","Bypass","Inhibited","Alarm","Low Battery","Supervision Fault"
+    ,"","","","","","");
+
+  var zoneNames = new Array("","","","","","","","","","","","","","","","");
+  var zoneSequence = new Array(161,0,0,0,65,182,0,0,0,0,185,0,0,0);
+  var zoneStatus = new Array(new Array(2,0),new Array(0,0),new Array(0,0),new Array(0,0),new Array(0,0),new Array(0,0),new Array(0,0),new Array(0,0),new Array(0,0),new Array(0,0),new Array(0,0),new Array(0,0),new Array(0,0),new Array(0,0));
+
+  function getSession(){return "6ABB3503AB76938B";}
+  </script>
+
+  <div id="w">
+    <!-- buildBanner() inserts banner html here -->
+    <!-- buildMenu() inserts status menu here -->
+    <!-- buildZones() inserts zones html here -->
+  </div>
+ 
+  <script>
+  function afterLoad()
+  {
+    buildBanner("ComNav");
+    buildMenu(2,0,0,0,1,1);
+    buildZones();
+    setTimeout("updateAllZones()",100);
+    setTimeout("newAJAXCommand('/user/seq.xml', checkZoneSeq, false)", 1000);
+  }
+  	    // function called by iPhone to return "{active menu index, authorised menu list}"
+    // Note: the iPhone will display in the order presented here. see master.jss
+    function getMenu()
+    {
+      return "[1, [1,1,1,0,0,0,0,0,0,0,0,0]]";
+    }
+
+
+  </script>
+</body>
+</html>
