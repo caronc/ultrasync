@@ -170,7 +170,7 @@ def test_comnav_0_106_communication(mock_post):
 
     # Simulate initial zone fetch configuration
     with open(join(ULTRASYNC_TEST_VAR_DIR,
-            'zstate.bank0.w.update.xml'), 'rb') as f:
+              'zstate.bank0.w.update.xml'), 'rb') as f:
         zst0_obj.content = f.read()
     zst0_obj.status_code = requests.codes.ok
 
@@ -179,7 +179,7 @@ def test_comnav_0_106_communication(mock_post):
 
     # Simulate initial zone fetch configuration
     with open(join(ULTRASYNC_TEST_VAR_DIR,
-            'zstate.bank4.w.update.xml'), 'rb') as f:
+              'zstate.bank4.w.update.xml'), 'rb') as f:
         zst4_obj.content = f.read()
     zst4_obj.status_code = requests.codes.ok
 
