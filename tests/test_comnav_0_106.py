@@ -161,24 +161,45 @@ def test_comnav_0_106_communication(mock_post):
     assert uobj.areas[0]['sequence'] == 244
 
     # Update our sequence file so that it reflects a change
+    # This update will report an area update and 2 zones (bank 0 and 4)
     with open(join(ULTRASYNC_TEST_VAR_DIR, 'seq.w.update.xml'), 'rb') as f:
         seq_obj.content = f.read()
+
+    # A zone state response object
+    zst0_obj = mock.Mock()
+
+    # Simulate initial zone fetch configuration
+    with open(join(ULTRASYNC_TEST_VAR_DIR,
+            'zstate.bank0.w.update.xml'), 'rb') as f:
+        zst0_obj.content = f.read()
+    zst0_obj.status_code = requests.codes.ok
+
+    # A zone state response object
+    zst4_obj = mock.Mock()
+
+    # Simulate initial zone fetch configuration
+    with open(join(ULTRASYNC_TEST_VAR_DIR,
+            'zstate.bank4.w.update.xml'), 'rb') as f:
+        zst4_obj.content = f.read()
+    zst4_obj.status_code = requests.codes.ok
 
     # Reset our mock object
     mock_post.reset_mock()
 
     # Update our side effects
-    mock_post.side_effect = (seq_obj, ast_obj, zst_obj)
+    mock_post.side_effect = (seq_obj, zst0_obj, zst4_obj, ast_obj)
 
     # Perform Updated Query
     uobj.update(max_age_sec=0)
 
-    assert mock_post.call_count == 3
+    assert mock_post.call_count == 4
     assert mock_post.call_args_list[0][0][0] == \
         'http://zerowire/user/seq.xml'
     assert mock_post.call_args_list[1][0][0] == \
         'http://zerowire/user/zstate.xml'
     assert mock_post.call_args_list[2][0][0] == \
+        'http://zerowire/user/zstate.xml'
+    assert mock_post.call_args_list[3][0][0] == \
         'http://zerowire/user/status.xml'
 
     assert isinstance(uobj.areas, dict)

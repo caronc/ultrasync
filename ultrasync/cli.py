@@ -174,7 +174,7 @@ def main(config, debug_dump, scene, details, watch,
 
     if debug_dump:
         with click.progressbar(length=100,
-                       label='Creating debug archive') as bar:
+                               label='Creating debug archive') as bar:
             usync.debug_dump(compress=True, progress=bar)
             actioned = True
 

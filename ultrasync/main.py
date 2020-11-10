@@ -820,6 +820,10 @@ class UltraSync(UltraSyncConfig):
                         status = \
                             self.__extra_area_status[idx - len(AREA_STATES)]
 
+                        # For consistency; convert 'No System Faults' to Ready
+                        if status == 'No System Faults':
+                            status = AreaStatus.READY
+
                     else:
                         # Set status
                         status = AreaStatus.READY
@@ -1386,7 +1390,7 @@ class UltraSync(UltraSyncConfig):
         # Update our bank states
         try:
             for no, val in enumerate(response.find('zdat').text.split(',')):
-                self._zbank[no][bank] = int(val)
+                self._zbank[bank][no] = int(val)
 
         except AttributeError:
             # <zdat> stanza was not found
