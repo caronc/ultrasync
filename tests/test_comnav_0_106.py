@@ -208,7 +208,7 @@ def test_comnav_0_106_communication(mock_post):
     assert uobj.areas[0]['bank'] == 0
     # Our sequence got bumped
     assert uobj.areas[0]['sequence'] == 245
-    assert uobj.areas[0]['status'] == 'Ready'
+    assert uobj.areas[0]['status'] == 'Not Ready'
 
     # Reset our mock object
     mock_post.reset_mock()

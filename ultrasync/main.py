@@ -826,9 +826,9 @@ class UltraSync(UltraSyncConfig):
                         status = \
                             self.__extra_area_status[idx - len(AREA_STATES)]
 
-                        # For consistency; convert 'No System Faults' to Ready
+                        # Convert 'No System Faults' to Not Ready
                         if status == 'No System Faults':
-                            status = AreaStatus.READY
+                            status = AreaStatus.NOT_READY_FORCEABLE
                             break
 
                     else:
