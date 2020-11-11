@@ -4,4 +4,3 @@ mock
 pytest
 pytest-cov
 tox
-cryptography

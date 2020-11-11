@@ -1,0 +1,62 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="ISO-8859-1">
+	<title>ComNav :: Secure Network</title>
+	<meta name="viewport" content="initial-scale=1.0, width=device-width, maximum-scale = 1.0, minimum-scale = 1.0" />
+	<link href="/v_CN_0.106-j/m.css" rel="stylesheet">
+	<script src="/v_CN_0.106-j/master.js" charset="utf-8"></script>
+	<script src="/v_CN_0.106-j/status.js" charset="utf-8"></script>
+</head>
+<body onload = "afterLoad();">
+	<script>
+	var areaDisplay = new Array(0);
+
+	var areaStates = new Array("Armed Away", "Armed Stay", "Ready","Fire Alarm","Burg Alarm","Panic Alarm","Medical Alarm","Exit Delay"
+		,"Exit Delay 2","Entry Delay","Zone Bypass","Zone Trouble","Zone Tamper","Zone Low Battery","Zone Supervision","");
+
+	var areaNames = new Array("","!","!","!","!","!","!","!");
+	var areaSequence = new Array(244);
+	var areaStatus = new Array(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0); 
+	var sysStatus;
+	var areaCount = 0;
+    var allAway = false;
+    var allStay = false;
+    var allChime = false;
+    var allpriority = 6;
+    var allSequence = 0;
+    
+	function getSession(){return "6ABB3503AB76938B";}
+	</script>	
+
+	<div id="w">
+		<!-- buildBanner() inserts banner html here -->
+		<!-- buildMenu() inserts status menu here -->
+		<!-- buildAreas() inserts areas html here -->
+	</div>
+
+	<script>
+	sysStatus = new Array();
+
+	function afterLoad()
+	{
+		buildBanner("ComNav");
+        buildMenu(1,0,0,0,1,1);
+		buildAreas();
+
+		for(var i = (17*12); i < areaStatus.length;i++)
+			sysStatus.push(areaStatus[i]);
+		setTimeout("updateAllAreas()",1500); 
+		areaSequence[0] += 100;  
+		setTimeout("pollSequence()", 100); 
+	}
+	    // function called by iPhone to return "{active menu index, authorised menu list}"
+    // Note: the iPhone will display in the order presented here. see master.jss
+    function getMenu()
+    {
+      return "[0, [1,1,1,0,0,0,0,0,0,0,0,0]]";
+    }
+
+	</script>
+</body>
+</html>
