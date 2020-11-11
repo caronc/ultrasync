@@ -703,9 +703,14 @@ class UltraSync(UltraSyncConfig):
             while not status:
 
                 if idx >= len(AREA_STATES):
-                    # Set status
-                    status = AreaStatus.READY
-                    break
+                    if self.__extra_area_status:
+                        status = \
+                            self.__extra_area_status[idx - len(AREA_STATES)]
+
+                    else:
+                        # Set status
+                        status = AreaStatus.READY
+                        break
 
                 if vbank[int(self.__zw_area_state_byte[idx] / 2)]:
                     if st_partial:
@@ -742,7 +747,8 @@ class UltraSync(UltraSyncConfig):
                 priority = 1
 
             elif vbank[ZWAreaBank.UNKWN_33] or vbank[ZWAreaBank.UNKWN_34] or \
-                    vbank[ZWAreaBank.UNKWN_35] or vbank[ZWAreaBank.UNKWN_36]:
+                    vbank[ZWAreaBank.UNKWN_35] or vbank[ZWAreaBank.UNKWN_36] \
+                    or self.__extra_area_status:
 
                 # Assign priority to 2
                 priority = 2
@@ -823,10 +829,12 @@ class UltraSync(UltraSyncConfig):
                         # For consistency; convert 'No System Faults' to Ready
                         if status == 'No System Faults':
                             status = AreaStatus.READY
+                            break
 
                     else:
                         # Set status
                         status = AreaStatus.READY
+                        break
 
                 elif vbank[idx]:
                     if AREA_STATES[idx] != AreaStatus.READY \
@@ -1228,6 +1236,10 @@ class UltraSync(UltraSyncConfig):
         if not response:
             return None
 
+        # Store our Fault Status (if set)
+        self.__extra_area_status = \
+            [unquote(e).strip() for e in response.get('system', [])]
+
         # Update our bank states
         self.areas[bank]['bank_state'] = response['bankstates']
 
@@ -1587,13 +1599,15 @@ class UltraSync(UltraSyncConfig):
                 # Make our POST request
                 request = self.session.post(
                     url, data=payload, auth=self.auth, headers=headers,
-                    timeout=self.timeout, allow_redirects=False)
+                    verify=self.verify, timeout=self.timeout,
+                    allow_redirects=False)
 
             else:
                 # Make our request
                 request = self.session.get(
                     url, data=payload, auth=self.auth, headers=headers,
-                    timeout=self.timeout, allow_redirects=False)
+                    verify=self.verify, timeout=self.timeout,
+                    allow_redirects=False)
 
             logger.trace('URL: {}, status_code: {}'.format(
                 url, request.status_code))
