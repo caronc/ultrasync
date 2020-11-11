@@ -65,6 +65,7 @@ Compatible with both NX-595E [Hills](https://www.hills.com.au/) ComNav and [Inte
   # A live monitoring of your home security system:
   ultrasync --watch
   ```
+![UltraSync Watch Mode](https://raw.githubusercontent.com/caronc/ultrasync/master/static/ultrasync-watch.gif)
 
 - You can generate a snapshot (in JSON format) that greatly details everything taking place through your security home setup. It provides MUCH greater detail than the `--watch` which allows it to also be integrated with [Home Assistant](https://www.home-assistant.io/integrations/ultrasync/).
 
