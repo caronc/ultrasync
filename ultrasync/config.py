@@ -61,8 +61,8 @@ class UltraSyncConfig(object):
             'ULTRASYNC_USER', UltraSyncConfig._user)
         self._host = host if host else os.environ.get(
             'ULTRASYNC_HOST', UltraSyncConfig._host)
-        self._verify = bool(verify if verify is not None else os.environ.get(
-            'ULTRASYNC_SSL_VERIFY', UltraSyncConfig._verify))
+        self._verify = verify if verify is not None else os.environ.get(
+            'ULTRASYNC_SSL_VERIFY', UltraSyncConfig._verify)
         self._user_agent = \
             user_agent if user_agent else UltraSyncConfig._user_agent
 
@@ -77,17 +77,16 @@ class UltraSyncConfig(object):
         If it is, it further parses out details from it
 
         """
-        # Reset our variables to their defaults
-        self.__secure = False
-        self.__auth = None
-
         if re.match(r'^\s*https?://.+', self._host, re.I):
             # Parse our URL details and populate our other entries
             result = urlparse(self._host)
-            self._host = result.netloc
+            self._host = result.hostname
             self.__secure = result.scheme[-1].lower() == 's'
             if result.username and result.password:
                 self.__auth = (result.username, result.password)
+
+        # Ensure verify is of type boolean
+        self._verify = self.parse_bool(self._verify, UltraSyncConfig._verify)
 
         return True
 
@@ -95,6 +94,10 @@ class UltraSyncConfig(object):
         """
         Loads the configuration specified by the path
         """
+
+        # Reset our variables to their defaults
+        self.__secure = False
+        self.__auth = None
 
         # Define what a valid line should look like
         valid_line_re = re.compile(
@@ -111,7 +114,7 @@ class UltraSyncConfig(object):
                         # keep reading
                         continue
                     key = '_{}'.format(match.group('key'))
-                    if hasattr(self, key):
+                    if key[1] != '_' and hasattr(self, key):
                         setattr(self, key, match.group('value'))
                         logger.trace('Config: {} loaded as {}'.format(
                             key[1:], match.group('value')))
@@ -122,6 +125,42 @@ class UltraSyncConfig(object):
 
         # Return our parsed content
         return self.__store()
+
+    @staticmethod
+    def parse_bool(arg, default=False):
+        """
+        Parse a boolean from the argument passed in
+        """
+
+        if isinstance(arg, str):
+            # of = short for off - False
+            # 0  = int for False
+            # fa = short for False - False
+            # f  = short for False - False
+            # n  = short for No or Never - False
+            # ne  = short for Never - False
+            # d  = short for Disable(d) / Deny - False
+            # -  = False
+            if arg.lower()[0:2] in (
+                    '-', 'd', 'di', 'de', 'ne', 'f', 'n', 'no', 'of', '0',
+                    'fa'):
+                return False
+            # y = yes - True
+            # on = short for off - True
+            # 1  = int for True
+            # tr = short for True - True
+            # t  = short for True - True
+            # al = short for Always (and Allow) - True
+            # e  = short for Enable(d) - True
+            # +  = True
+            elif arg.lower()[0:2] in (
+                    '+', 'e', 'en', 'al', 't', 'y', 'ye', 'on', '1', 'tr'):
+                return True
+            # otherwise
+            return default
+
+        # Handle other types
+        return bool(arg)
 
     @property
     def host(self):
