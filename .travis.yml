@@ -1,0 +1,30 @@
+language: python
+
+dist: xenial
+
+matrix:
+  include:
+    - python: "3.7"
+      env: TOXENV=py37
+    - python: "3.8"
+      env: TOXENV=py38
+    - python: "3.9-dev"
+      env: TOXENV=py39
+
+install:
+  - pip install .
+  - pip install codecov
+  - pip install -r dev-requirements.txt
+  - pip install -r requirements.txt
+
+
+# run tests
+script:
+  - tox
+
+after_success:
+  - tox -e coverage-report
+  - codecov
+
+notifications:
+  email: false
