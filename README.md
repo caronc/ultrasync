@@ -9,7 +9,7 @@ Compatible with both NX-595E [Hills](https://www.hills.com.au/) ComNav and [Inte
 [![Python](https://img.shields.io/pypi/pyversions/ultrasync.svg?style=flat-square)](https://pypi.org/project/ultrasync/)
 [![Build Status](https://travis-ci.org/caronc/ultrasync.svg?branch=master)](https://travis-ci.org/caronc/ultrasync)
 [![CodeCov Status](https://codecov.io/github/caronc/ultrasync/branch/master/graph/badge.svg)](https://codecov.io/github/caronc/ultrasync)
-[![PyPi](https://img.shields.io/pypi/dm/ultrasync.svg?style=flat-square)](https://pypi.org/project/ultrasync/)
+[![Downloads](http://pepy.tech/badge/ultrasync)](https://pypi.org/project/ultrasync/)
 
 ## How Does It Work?
 
