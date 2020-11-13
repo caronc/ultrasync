@@ -109,7 +109,7 @@ def test_cli_version():
 
 
 @mock.patch('requests.Session.post')
-def test_cli_details(mock_post):
+def test_cli_details(mock_post, tmpdir):
     """
     Test UltraSync CLI Details
 
@@ -137,13 +137,46 @@ def test_cli_details(mock_post):
     # Initialize our Runner
     runner = CliRunner()
 
-    # Returns UltraSync CLI Version Details
-    result = runner.invoke(cli.main, [
-        '--details'
-    ])
+    with mock.patch('ultrasync.cli.DEFAULT_SEARCH_PATHS', []):
+        # Returns UltraSync CLI Version Details
+        result = runner.invoke(cli.main, [
+            '--details'
+        ])
 
-    # no configuration specified; we return 1 (non-zero)
-    assert result.exit_code == 0
+        # no configuration specified; we return 1 (non-zero)
+        assert result.exit_code == 1
+
+    # Create a config file
+    config = tmpdir.join("config")
+    content = [
+        'host: ultrasync.example.com',
+        'pin: 1234',
+        'user: Admin',
+    ]
+    config.write('\n'.join(content))
+
+    with mock.patch('ultrasync.cli.DEFAULT_SEARCH_PATHS', []):
+        # Returns UltraSync CLI Version Details
+        result = runner.invoke(cli.main, [
+            '--details',
+            '--config', str(config),
+        ])
+
+        # now we have configuration
+        assert result.exit_code == 0
+
+    # Reset our object
+    mock_post.reset_mock()
+    # Assign our response object to our mocked instance of requests
+    mock_post.side_effect = (arobj, zrobj)
+
+    with mock.patch('ultrasync.cli.DEFAULT_SEARCH_PATHS', [str(config)]):
+        result = runner.invoke(cli.main, [
+            '--details',
+        ])
+
+        # We'll load our configuration from the default path
+        assert result.exit_code == 0
 
 
 @mock.patch('platform.system')
