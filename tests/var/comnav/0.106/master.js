@@ -1,4 +1,4 @@
-﻿// Determines when a request is considered "timed out"
+// Determines when a request is considered "timed out"
 var timeOutMS = 5000; //ms
 var profwin;
 var globalXmlHttp;

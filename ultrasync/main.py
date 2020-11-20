@@ -97,7 +97,7 @@ class UltraSync(UltraSyncConfig):
         self.__extra_area_status = []
 
         # Taken straight out of Informix ZeroWire status.js
-        self.__zw_area_state_byte = [
+        self._zw_area_state_byte = [
             6, 4, 0, 16, 20, 18, 22, 8, 10, 12, 64, 66, 68, 70, 72, 14, 56]
 
         # Our zones get populated after we connect
@@ -227,7 +227,8 @@ class UltraSync(UltraSyncConfig):
 
         return True
 
-    def debug_dump(self, path=None, mode=0o755, compress=False, progress=None):
+    def debug_dump(self, path=None, mode=0o755, full=False, compress=False,
+                   progress=None):
         """
         Useful for checking for differences in alarm readings over time.
 
@@ -312,7 +313,7 @@ class UltraSync(UltraSyncConfig):
                     'sess': self.session_id,
                     'item': no + 1,
                     'minc': 'protect/scenes.xml'
-                }} for no in range(0, 16)})
+                }} for no in range(0, 16 if full else 1)})
 
             # Sensor Captures
             urls.update({'sensor.{}.xml'.format(no + 1): {
@@ -321,7 +322,7 @@ class UltraSync(UltraSyncConfig):
                     'sess': self.session_id,
                     'item': no + 1,
                     'minc': 'protect/sensor.xml'
-                }} for no in range(0, 16)})
+                }} for no in range(0, 16 if full else 1)})
 
             # Area Captures
             urls.update({'area.{}.xml'.format(no + 1): {
@@ -330,7 +331,7 @@ class UltraSync(UltraSyncConfig):
                     'sess': self.session_id,
                     'item': no + 1,
                     'minc': 'protect/area.xml'
-                }} for no in range(0, 4)})
+                }} for no in range(0, 4 if full else 1)})
 
             # zstate.json - All Zones
             urls.update({'zstate.{}.json'.format(no + 1): {
@@ -338,7 +339,7 @@ class UltraSync(UltraSyncConfig):
                 'payload': {
                     'sess': self.session_id,
                     'state': no,
-                }} for no in range(0, 16)})
+                }} for no in range(0, 16 if full else 4)})
 
         else:  # self.vendor is NX595EVendor.COMNAV
 
@@ -355,7 +356,7 @@ class UltraSync(UltraSyncConfig):
                 'payload': {
                     'sess': self.session_id,
                     'arsel': no,
-                }} for no in range(0, 4)})
+                }} for no in range(0, 4 if full else 1)})
 
             # zstate.xml - All Zones
             urls.update({'zstate.{}.xml'.format(no + 1): {
@@ -363,7 +364,7 @@ class UltraSync(UltraSyncConfig):
                 'payload': {
                     'sess': self.session_id,
                     'state': no,
-                }} for no in range(0, 12)})
+                }} for no in range(0, 12 if full else 4)})
 
         progress_ratio = 100.0 / len(urls)
         progress_track = 0.0
@@ -662,8 +663,8 @@ class UltraSync(UltraSyncConfig):
         # from the function updateArea():
         for bank, area in self.areas.items():
 
-            # some globals
-            mask = 1 << bank % 8
+            # define our mask
+            mask = (1 << (bank % 8))
 
             # Prepare ourselves a virtual states for reference that can be
             # later indexed by name for readability. Basically in
@@ -677,6 +678,11 @@ class UltraSync(UltraSyncConfig):
             #   78:80 - index 39
             vbank = [int(area['bank_state'][s:s + 2], 16) & mask
                      for s in range(0, 80, 2)]
+
+            # update our vbank to be more like the comnav one containing
+            # only 17 entries:
+            zw_vbank = [vbank[int(self._zw_area_state_byte[s] / 2)]
+                     for s in range(0, len(self._zw_area_state_byte))]
 
             # Partially Armed State
             st_partial = bool(vbank[ZWAreaBank.PARTIAL])
@@ -712,9 +718,12 @@ class UltraSync(UltraSyncConfig):
                         status = AreaStatus.READY
                         break
 
-                if vbank[int(self.__zw_area_state_byte[idx] / 2)]:
-                    if st_partial:
+                elif zw_vbank[idx]:
+                    if AREA_STATES[idx] != AreaStatus.READY \
+                            or not (st_armed or st_partial):
+
                         status = AREA_STATES[idx]
+
                         if status in (AreaStatus.ARMED_STAY,
                                       AreaStatus.EXIT_DELAY_1,
                                       AreaStatus.EXIT_DELAY_2):
@@ -725,7 +734,7 @@ class UltraSync(UltraSyncConfig):
                             elif vbank[ZWAreaBank.INSTANT]:
                                 status += ' - Instant'
 
-                    if status == AreaStatus.EXIT_DELAY_1:
+                    if AREA_STATES[idx] == AreaStatus.EXIT_DELAY_1:
                         # Bump to EXIT_DELAY_2; we'll eventually hit
                         # the bottom of our while loop and move past that too
                         idx += 1
@@ -790,8 +799,8 @@ class UltraSync(UltraSyncConfig):
         # from the function updateArea():
         for bank, area in self.areas.items():
 
-            # some globals
-            mask = 1 << bank % 8
+            # define our mask
+            mask = (1 << (bank % 8))
 
             # Prepare ourselves a virtual states for reference that can be
             # later indexed by name for readability.
@@ -829,7 +838,6 @@ class UltraSync(UltraSyncConfig):
                         # Convert 'No System Faults' to Not Ready
                         if status == 'No System Faults':
                             status = AreaStatus.NOT_READY_FORCEABLE
-                            break
 
                     else:
                         # Set status
@@ -842,16 +850,16 @@ class UltraSync(UltraSyncConfig):
 
                         status = AREA_STATES[idx]
 
-                        if status == AreaStatus.EXIT_DELAY_1:
-                            # Bump to EXIT_DELAY_2; we'll eventually hit
-                            # the bottom of our while loop and move past that
-                            # too
-                            idx += 1
+                    if AREA_STATES[idx] == AreaStatus.EXIT_DELAY_1:
+                        # Bump to EXIT_DELAY_2; we'll eventually hit
+                        # the bottom of our while loop and move past that
+                        # too
+                        idx += 1
 
-                    elif AREA_STATES[idx] == AreaStatus.READY \
-                            and not (st_armed or st_partial):
-                        # Update
-                        status = AreaStatus.NOT_READY
+                elif AREA_STATES[idx] == AreaStatus.READY \
+                        and not (st_armed or st_partial):
+                    # Update
+                    status = AreaStatus.NOT_READY
 
                 # increment our index by one
                 idx += 1

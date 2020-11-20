@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<title>UltraSync :: Secure Network</title>
+	<meta name="viewport" content="initial-scale=1.0, width=device-width, maximum-scale = 1.0, minimum-scale = 1.0" />
+    <script src="/v_ZW_03.02-C/eng_us.js" charset="utf-8"></script>
+	<link href="/v_ZW_03.02-C/m.css" rel="stylesheet">
+	<script src="/v_ZW_03.02-C/master.js" charset="utf-8"></script>
+	<script src="/v_ZW_03.02-C/status.js" charset="utf-8"></script>
+
+</head>
+<body onload = "afterLoad();">
+	<script>
+	var areaDisplay = [];
+
+	var areaNames = ["","%21","%21","%21","%21","%21","%21","%21"];
+	var areaSequence = [203,0,0,0,0,0,0,0,0,0,0,0];
+	var areaStatus = ["01000001010000000000000000000000000001000000000000000000000000000000000000000000"]; 
+	var entryTime = [0,0,0,0]; 
+	var exitTime = [55,0,0,0]; 
+	var sysStatus = [];
+	var areaCount = 0;
+    var allAway = false;
+    var allStay = false;
+    var allChime = false;
+    var allpriority = 6;
+    var allSequence = 0;
+    var tampers = [];
+    
+	function getSession(){return "C9095133F1A2757C";}
+	</script>	
+
+	<div id="w">
+		<!-- buildBanner() inserts banner html here -->
+		<!-- buildMenu() inserts status menu here -->
+		<!-- buildAreas() inserts areas html here -->
+	</div>
+
+	<script>
+			sysStatus = [];
+
+	function afterLoad()
+	{
+		convertNames(areaNames);
+		buildBanner(defaultNames[22]);
+        buildMenu(1,0,1,1,1,1,1);
+		buildAreas();
+		setTimeout("updateAllAreas()",1500); 
+		areaSequence[0] += 100;  
+		setTimeout("pollSequence()", 100); 
+        timeOutMS = 10000;
+
+	}
+
+	// function called by iPhone to return "{active menu index, authorised menu list}"
+	// Note: the iPhone will display in the order presented here. see master.jss
+	function getMenu()
+	{
+		return "[0,[1,1,1,1,1,1,1,0]]";
+	}
+	</script>
+</body>
+</html>
