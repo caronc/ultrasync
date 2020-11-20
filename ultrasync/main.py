@@ -682,7 +682,7 @@ class UltraSync(UltraSyncConfig):
             # update our vbank to be more like the comnav one containing
             # only 17 entries:
             zw_vbank = [vbank[int(self._zw_area_state_byte[s] / 2)]
-                     for s in range(0, len(self._zw_area_state_byte))]
+                        for s in range(0, len(self._zw_area_state_byte))]
 
             # Partially Armed State
             st_partial = bool(vbank[ZWAreaBank.PARTIAL])
