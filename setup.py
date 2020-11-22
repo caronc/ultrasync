@@ -46,7 +46,7 @@ else:
 
 setup(
     name='ultrasync',
-    version='0.9.0',
+    version='0.9.1',
     description='Wrapper to Hills/Interlogix UltraSync ComNav/ZeroWire Hub',
     license='MIT',
     long_description=open('README.md').read(),
