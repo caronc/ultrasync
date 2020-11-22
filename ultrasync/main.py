@@ -50,7 +50,7 @@ class HubResponseType(object):
     # no changes are made to the response object
     RAW = 'raw'
 
-    # JSON requests are used by the Informix ZeroWire Hub
+    # JSON requests are used by the Interlogix ZeroWire Hub
     JSON = 'json'
 
     # XML requests are used by the ComNav Hub
@@ -96,8 +96,8 @@ class UltraSync(UltraSyncConfig):
         # here.
         self.__extra_area_status = []
 
-        # Taken straight out of Informix ZeroWire status.js
-        self._zw_area_state_byte = [
+        # Taken straight out of Interlogix ZeroWire status.js
+        self.__zw_area_state_byte = [
             6, 4, 0, 16, 20, 18, 22, 8, 10, 12, 64, 66, 68, 70, 72, 14, 56]
 
         # Our zones get populated after we connect
@@ -657,7 +657,7 @@ class UltraSync(UltraSyncConfig):
         Process our area information based on current configuration
 
         """
-        # The following was reverse-engineered from status.js on the Informix
+        # The following was reverse-engineered from status.js on the Interlogix
         # ZeroWire (UltraSync) NX-595E Device:
 
         # from the function updateArea():
@@ -681,8 +681,8 @@ class UltraSync(UltraSyncConfig):
 
             # update our vbank to be more like the comnav one containing
             # only 17 entries:
-            zw_vbank = [vbank[int(self._zw_area_state_byte[s] / 2)]
-                        for s in range(0, len(self._zw_area_state_byte))]
+            zw_vbank = [vbank[int(self.__zw_area_state_byte[s] / 2)]
+                        for s in range(0, len(self.__zw_area_state_byte))]
 
             # Partially Armed State
             st_partial = bool(vbank[ZWAreaBank.PARTIAL])
@@ -1208,7 +1208,7 @@ class UltraSync(UltraSyncConfig):
 
     def _zerowire_area_status_update(self, bank=0):
         """
-        Performs a area status check for the Informix ZeroWire Hub
+        Performs a area status check for the Interlogix ZeroWire Hub
 
         A status response could look like this:
         {
@@ -1336,7 +1336,7 @@ class UltraSync(UltraSyncConfig):
 
     def _zerowire_zone_status_update(self, bank=0):
         """
-        Performs a zone status check for the Informix Zerowire Hub
+        Performs a zone status check for the Interlogix Zerowire Hub
 
         A status response could look like this:
         {

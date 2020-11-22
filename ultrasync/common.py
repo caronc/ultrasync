@@ -30,7 +30,7 @@ class NX595EVendor(object):
     control panel is parsed
     """
 
-    # Informix ZeroWire UltraSync
+    # Interlogix ZeroWire UltraSync
     ZEROWIRE = 'zerowire'
 
     # ComNav UltraSync
@@ -39,7 +39,7 @@ class NX595EVendor(object):
 
 class ZWPanelFunction(object):
     """
-    Informix ZeroWire Function Commands
+    Interlogix ZeroWire Function Commands
     """
 
     AREA_DISARM = 0
@@ -61,7 +61,7 @@ class CNPanelFunction(object):
 
 class ZWAreaBank(object):
     """
-    Defines the Bank Identifiers for Informix ZeroWire Area Queries
+    Defines the Bank Identifiers for Interlogix ZeroWire Area Queries
 
     By identifying the bank and breaking it down, it makes the code
     MUCH easier to read for others.  It also makes the code easier to
@@ -178,6 +178,7 @@ class AreaStatus(object):
 AREA_STATES = (
     # These are intentially set and the order is very important
     # entries missing in this array but defined above is an intentional thing
+    # These states are the same on both the ComNav and Interlogix systems
     AreaStatus.ARMED_AWAY,
     AreaStatus.ARMED_STAY,
     AreaStatus.READY,
@@ -226,7 +227,7 @@ class ZoneBank(object):
     UNKWN_12 = 12
     UNKWN_13 = 13
 
-    # The following 4 bank ID's below are only available on the Informix
+    # The following 4 bank ID's below are only available on the Interlogix
     # ZeroWire
     UNKWN_14 = 14
     UNKWN_15 = 15

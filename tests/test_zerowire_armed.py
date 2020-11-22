@@ -43,7 +43,7 @@ ULTRASYNC_TEST_VAR_DIR = \
 @mock.patch('requests.Session.post')
 def test_zerowire_armed_communication(mock_post):
     """
-    Test Informix ZeroWire Hub Communication
+    Test Interlogix ZeroWire Hub Communication
 
     """
 
