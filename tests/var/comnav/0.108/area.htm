@@ -7,8 +7,8 @@
 	<link href="/v_CN_0.108-m/m.css" rel="stylesheet">
 	<script src="/v_CN_0.108-m/master.js" charset="utf-8"></script>
 	<script src="/v_CN_0.108-m/status.js" charset="utf-8"></script>
-  	<script src="/v_CN_0.108-m/lang_engau.js" charset="utf-8"></script> 
-	
+  	<script src="/v_CN_0.108-m/lang_engau.js" charset="utf-8"></script>
+
 </head>
 <body onload = "afterLoad();">
 	<script>
@@ -17,7 +17,7 @@
 
 	var areaNames = new Array("Home","%21","%21","%21","%21","%21","%21","%21");
 	var areaSequence = new Array(178);
-	var areaStatus = new Array(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1); 
+	var areaStatus = new Array(0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1);
 	var sysStatus;
 	var areaCount = 0;
     var allAway = false;
@@ -25,9 +25,9 @@
     var allChime = false;
     var allpriority = 6;
     var allSequence = 0;
-    
+
 	function getSession(){return "0F76099C29154BAD";}
-	</script>	
+	</script>
 
 	<div id="w">
 		<!-- buildBanner() inserts banner html here -->
@@ -49,9 +49,9 @@
 
 		for(var i = (17*12); i < areaStatus.length;i++)
 			sysStatus.push(areaStatus[i]);
-		setTimeout("updateAllAreas()",1500); 
-		areaSequence[0] += 100;  
-		setTimeout("pollSequence()", 100); 
+		setTimeout("updateAllAreas()",1500);
+		areaSequence[0] += 100;
+		setTimeout("pollSequence()", 100);
 	}
 	    // function called by iPhone to return "{active menu index, authorised menu list}"
     // Note: the iPhone will display in the order presented here. see master.jss

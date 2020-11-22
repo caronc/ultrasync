@@ -37,7 +37,8 @@ import logging
 logging.disable(logging.CRITICAL)
 
 # Reference Directory
-ULTRASYNC_TEST_VAR_DIR = join(dirname(__file__), 'var', NX595EVendor.ZEROWIRE)
+ULTRASYNC_TEST_VAR_DIR = \
+    join(dirname(__file__), 'var', NX595EVendor.ZEROWIRE, 'general')
 
 
 def test_cli_help():

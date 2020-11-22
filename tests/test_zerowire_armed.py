@@ -36,13 +36,14 @@ import logging
 logging.disable(logging.CRITICAL)
 
 # Reference Directory
-ULTRASYNC_TEST_VAR_DIR = join(dirname(__file__), 'var', NX595EVendor.ZEROWIRE)
+ULTRASYNC_TEST_VAR_DIR = \
+    join(dirname(__file__), 'var', NX595EVendor.ZEROWIRE, 'armed')
 
 
 @mock.patch('requests.Session.post')
-def test_zerowire_communication(mock_post):
+def test_zerowire_armed_communication(mock_post):
     """
-    Test Informix ZeroWire Hub Communication
+    Test Interlogix ZeroWire Hub Communication
 
     """
 
@@ -79,11 +80,11 @@ def test_zerowire_communication(mock_post):
     assert len(uobj.areas) == 1
     assert uobj.areas[0]['name'] == 'Area 1'
     assert uobj.areas[0]['bank'] == 0
-    assert uobj.areas[0]['sequence'] == 149
-    assert uobj.areas[0]['status'] == 'Ready'
+    assert uobj.areas[0]['sequence'] == 203
+    assert uobj.areas[0]['status'] == 'Exit Delay 1'
 
     assert isinstance(uobj.zones, dict)
-    # we have 8 zones defined in our test file spread across
+    # we have 6 zones defined in our test file spread across
     # different banks:
     assert len(uobj.zones) == 6
     bank = 0
@@ -127,4 +128,4 @@ def test_zerowire_communication(mock_post):
     assert uobj.zones[bank]['bank'] == bank
     assert uobj.zones[bank]['sequence'] == 1
     assert uobj.zones[bank]['status'] == 'Ready'
-    assert uobj.zones[bank]['can_bypass'] is True
+    assert uobj.zones[bank]['can_bypass'] is False

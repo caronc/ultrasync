@@ -1,3 +1,8 @@
 .pyc
 __pycache__
 .coverage
+
+# Created during wheel builds
+build/
+dist/
+ultrasync.egg-info/
