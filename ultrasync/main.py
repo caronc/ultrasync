@@ -409,7 +409,7 @@ class UltraSync(UltraSyncConfig):
         progress.update(100.001 - progress_track)
         return
 
-    def set(self, area=1, state=AlarmScene.DISARMED):
+    def set(self, area=1, scene=AlarmScene.DISARMED):
         """
         Sets Alarm Scene
 
@@ -417,7 +417,14 @@ class UltraSync(UltraSyncConfig):
         if not self.session_id and not self.login():
             return False
 
-        if state not in ALARM_SCENES:
+        if scene not in ALARM_SCENES:
+            logger.error(
+                '{} is not valid alarm scene'.format(scene))
+            return False
+
+        if str(area) not in self.areas:
+            logger.error(
+                'Area {} does not exist'.format(area))
             return False
 
         # Start our payload off with our session identifier
@@ -431,12 +438,12 @@ class UltraSync(UltraSyncConfig):
                 'mask': 1 << (area - 1) % 8,
             })
 
-            if state == AlarmScene.STAY:
+            if scene == AlarmScene.STAY:
                 payload.update({
                     'fnum': ZWPanelFunction.AREA_STAY,
                 })
 
-            elif state == AlarmScene.AWAY:
+            elif scene == AlarmScene.AWAY:
                 payload.update({
                     'fnum': ZWPanelFunction.AREA_AWAY,
                 })
@@ -456,12 +463,12 @@ class UltraSync(UltraSyncConfig):
                 'data1': 1 << (area - 1) % 8,
             })
 
-            if state == AlarmScene.STAY:
+            if scene == AlarmScene.STAY:
                 payload.update({
                     'data2': CNPanelFunction.AREA_STAY,
                 })
 
-            elif state == AlarmScene.AWAY:
+            elif scene == AlarmScene.AWAY:
                 payload.update({
                     'data2': CNPanelFunction.AREA_AWAY,
                 })
