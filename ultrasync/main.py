@@ -409,7 +409,7 @@ class UltraSync(UltraSyncConfig):
         progress.update(100.001 - progress_track)
         return
 
-    def set(self, area=1, scene=AlarmScene.DISARMED):
+    def set_scene(self, areas=None, scene=AlarmScene.DISARMED):
         """
         Sets Alarm Scene
 
@@ -422,70 +422,101 @@ class UltraSync(UltraSyncConfig):
                 '{} is not valid alarm scene'.format(scene))
             return False
 
-        if str(area) not in self.areas:
-            logger.error(
-                'Area {} does not exist'.format(area))
-            return False
+        if not areas:
+            # Load all of our detected areas
+            areas = [int(a) + 1 for a in self.areas.keys()]
 
-        # Start our payload off with our session identifier
-        payload = {
-            'sess': self.session_id,
-        }
+        elif not isinstance(areas, (list, tuple, set)):
+            # Ensure we're working with a set
+            areas = [areas]
 
-        if self.vendor is NX595EVendor.ZEROWIRE:
-            payload.update({
-                'start': int(math.floor((area - 1) / 8)),
-                'mask': 1 << (area - 1) % 8,
-            })
+        # A boolean for tracking any errors
+        has_error = False
 
-            if scene == AlarmScene.STAY:
+        for area in areas:
+            if not isinstance(area, int):
+                try:
+                    # Do our best to accomodate this situation
+                    area = int(area)
+
+                except (TypeError, ValueError):
+                    logger.error(
+                        'An invalid Area ({}) was specified.'.format(area))
+                    has_error = True
+                    continue
+
+            if (area - 1) not in self.areas:
+                logger.error(
+                    'Area {} does not exist'.format(area))
+                has_error = True
+                continue
+
+            # Start our payload off with our session identifier
+            payload = {
+                'sess': self.session_id,
+            }
+
+            if self.vendor is NX595EVendor.ZEROWIRE:
                 payload.update({
-                    'fnum': ZWPanelFunction.AREA_STAY,
+                    'start': int(math.floor((area - 1) / 8)),
+                    'mask': 1 << (area - 1) % 8,
                 })
 
-            elif scene == AlarmScene.AWAY:
+                if scene == AlarmScene.STAY:
+                    payload.update({
+                        'fnum': ZWPanelFunction.AREA_STAY,
+                    })
+
+                elif scene == AlarmScene.AWAY:
+                    payload.update({
+                        'fnum': ZWPanelFunction.AREA_AWAY,
+                    })
+
+                else:   # AlarmScene.DISARMED
+                    payload.update({
+                        'fnum': ZWPanelFunction.AREA_DISARM,
+                    })
+
+                rtype = HubResponseType.JSON
+
+            else:  # self.vendor is NX595EVendor.COMNAV
+
                 payload.update({
-                    'fnum': ZWPanelFunction.AREA_AWAY,
+                    'comm': 80,
+                    'data0': 2,
+                    'data1': 1 << (area - 1) % 8,
                 })
 
-            else:   # AlarmScene.DISARMED
-                payload.update({
-                    'fnum': ZWPanelFunction.AREA_DISARM,
-                })
+                if scene == AlarmScene.STAY:
+                    payload.update({
+                        'data2': CNPanelFunction.AREA_STAY,
+                    })
 
-            rtype = HubResponseType.JSON
+                elif scene == AlarmScene.AWAY:
+                    payload.update({
+                        'data2': CNPanelFunction.AREA_AWAY,
+                    })
 
-        else:  # self.vendor is NX595EVendor.COMNAV
+                else:   # AlarmScene.DISARMED
+                    payload.update({
+                        'data2': CNPanelFunction.AREA_DISARM,
+                    })
 
-            payload.update({
-                'comm': 80,
-                'data0': 2,
-                'data1': 1 << (area - 1) % 8,
-            })
+                rtype = HubResponseType.XML
 
-            if scene == AlarmScene.STAY:
-                payload.update({
-                    'data2': CNPanelFunction.AREA_STAY,
-                })
+            # Send our response
+            response = self.__get(
+                '/user/keyfunction.cgi', rtype=rtype, payload=payload)
 
-            elif scene == AlarmScene.AWAY:
-                payload.update({
-                    'data2': CNPanelFunction.AREA_AWAY,
-                })
+            if not response:
+                logger.info(
+                    'Failed to send {} scene to Area {}'.format(scene, area))
+                has_error = True
 
-            else:   # AlarmScene.DISARMED
-                payload.update({
-                    'data2': CNPanelFunction.AREA_DISARM,
-                })
+            logger.info(
+                'Sent {} scene to Area {} Successfully'.format(scene, area))
 
-            rtype = HubResponseType.XML
-
-        response = self.__get(
-            '/user/keyfunction.cgi', rtype=rtype, payload=payload)
-        if not response:
-            return False
-
-        return response
+        return not has_error
 
     def update(self, ref=None, max_age_sec=1):
         """

@@ -187,19 +187,9 @@ def main(config, debug_dump, full_debug_dump, scene, details, watch,
             actioned = True
 
     if scene:
-        areas = [area] if area else [int(a) for a in self.area.keys()]
-        has_error = False
-        for area in areas:
-            if not usync.set(scene=scene, area=area):
-                # Failed to set scene
-                logger.error(
-                    'Could not load set scene to {} in Area {}'.format(
-                        scene, area))
-                has_error = True
-            actioned = True
-
-        if has_error:
+        if not usync.set_scene(areas=area, scene=scene):
             sys.exit(1)
+        actioned = True
 
     if watch:
         area_delta = {}
