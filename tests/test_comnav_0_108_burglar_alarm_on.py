@@ -36,9 +36,8 @@ import logging
 logging.disable(logging.CRITICAL)
 
 # Reference Directory
-ULTRASYNC_TEST_VAR_DIR = \
-    join(dirname(__file__), 'var', NX595EVendor.COMNAV,
-        '0.108-burglar-alarm-on')
+ULTRASYNC_TEST_VAR_DIR = join(
+    dirname(__file__), 'var', NX595EVendor.COMNAV, '0.108-burglar-alarm-on')
 
 
 @mock.patch('requests.Session.post')
