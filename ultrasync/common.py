@@ -150,7 +150,7 @@ class CNAreaBank(object):
 
 class AreaStatus(object):
     """
-    Defines the panel display area status
+    Defines the possible panel display status messages
     """
 
     # All sensor are active; occupants are not present.
@@ -162,39 +162,82 @@ class AreaStatus(object):
 
     READY = 'Ready'
 
+    ALARM_FIRE = 'Fire Alarm'
+    ALARM_BURGLAR = 'Burglar Alarm'
+    ALARM_PANIC = 'Panic Alarm'
+    ALARM_MEDICAL = 'Medical Alarm'
+
+    DELAY_EXIT_1 = 'Exit Delay 1'
+    DELAY_EXIT_2 = 'Exit Delay 2'
+    DELAY_ENTRY = 'Entry Delay'
+
+    SENSOR_BYPASS = 'Sensor Bypass'
+    SENSOR_TROUBLE = 'Sensor Trouble',
+    SENSOR_TAMPER = 'Sensor Tamper',
+    SENSOR_BATTERY = 'Sensor Low Battery',
+    SENSOR_SUPERVISION = 'Sensor Supervision',
+
     NOT_READY = 'Not Ready'
 
     NOT_READY_FORCEABLE = 'Not Ready'
 
     DISARMED = 'Disarm'
 
-    EXIT_DELAY_1 = 'Exit Delay 1'
-
-    EXIT_DELAY_2 = 'Exit Delay 2'
-
-    ENTRY_DELAY = 'Entry Delay'
-
 
 AREA_STATES = (
     # These are intentially set and the order is very important
     # entries missing in this array but defined above is an intentional thing
     # These states are the same on both the ComNav and Interlogix systems
-    AreaStatus.ARMED_AWAY,
-    AreaStatus.ARMED_STAY,
-    AreaStatus.READY,
-    'Fire Alarm',
-    'Burg Alarm',
-    'Panic Alarm',
-    'Medical Alarm',
-    AreaStatus.EXIT_DELAY_1,
-    AreaStatus.EXIT_DELAY_2,
-    AreaStatus.ENTRY_DELAY,
-    'Sensor Bypass',
-    'Sensor Trouble',
-    'Sensor Tamper',
-    'Sensor Low Battery',
-    'Sensor Supervision',
-    '',
+    AreaStatus.ARMED_AWAY,          # bank index 0
+    AreaStatus.ARMED_STAY,          # bank index 1
+    AreaStatus.READY,               # bank index 2
+
+    AreaStatus.ALARM_FIRE,          # bank index 3
+    AreaStatus.ALARM_BURGLAR,       # bank index 4
+    AreaStatus.ALARM_PANIC,         # bank index 5
+    AreaStatus.ALARM_MEDICAL,       # bank index 6
+
+    AreaStatus.DELAY_EXIT_1,        # bank index 7
+    AreaStatus.DELAY_EXIT_2,        # bank index 8
+    AreaStatus.DELAY_ENTRY,         # bank index 9
+
+    AreaStatus.SENSOR_BYPASS,       # bank index 10
+    AreaStatus.SENSOR_TROUBLE,      # bank index 11
+    AreaStatus.SENSOR_TAMPER,       # bank index 12
+    AreaStatus.SENSOR_BATTERY,      # bank index 13
+    AreaStatus.SENSOR_SUPERVISION,  # bank index 14
+
+    # Last entry empty
+    '',                             # bank index 15
+)
+
+AREA_STATUS_PROCESS_PRIORITY = (
+    # The processing order of the area status messages. We prioritize them to
+    # ease the on the logic used to determine which one should be displayed if
+    # more then one is set.  The first matched entry when read from top down
+    # is always used.  The index corresponds with the bank index defined above.
+
+    3,   # AreaStatus.ALARM_FIRE
+    4,   # AreaStatus.ALARM_BURGLAR
+    5,   # AreaStatus.ALARM_PANIC
+    6,   # AreaStatus.ALARM_MEDICAL
+
+    7,   # AreaStatus.DELAY_EXIT_1
+    8,   # AreaStatus.DELAY_EXIT_2
+    9,   # AreaStatus.DELAY_ENTRY
+
+    0,   # AreaStatus.ARMED_AWAY
+    1,   # AreaStatus.ARMED_STAY
+    2,   # AreaStatus.READY
+
+    10,  # AreaStatus.SENSOR_BYPASS
+    11,  # AreaStatus.SENSOR_TROUBLE
+    12,  # AreaStatus.SENSOR_TAMPER
+    13,  # AreaStatus.SENSOR_BATTERY
+    14,  # AreaStatus.SENSOR_SUPERVISION
+
+    # Last entry empty
+    15,
 )
 
 
@@ -237,7 +280,7 @@ class ZoneBank(object):
 
 class ZoneStatus(object):
     """
-    Defines the panel display zone/sensor status
+    Defines the possible panel display zone/sensor status
     """
 
     READY = 'Ready'

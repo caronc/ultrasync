@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>ComNav :: Secure Network</title>
+	<meta name="viewport" content="initial-scale=1.0, width=device-width, maximum-scale = 1.0, minimum-scale = 1.0" />
+	<link href="/v_CN_0.108-m/m.css" rel="stylesheet">
+	<script src="/v_CN_0.108-m/master.js" charset="utf-8"></script>
+	<script src="/v_CN_0.108-m/status.js" charset="utf-8"></script>
+  	<script src="/v_CN_0.108-m/lang_engau.js" charset="utf-8"></script> 
+	
+</head>
+<body onload = "afterLoad();">
+	<script>
+	var areaDisplay = new Array(0);
+
+
+	var areaNames = new Array("Home","%21","%21","%21","%21","%21","%21","%21");
+	var areaSequence = new Array(208);
+	var areaStatus = new Array(1,0,1,0,1,0,0,0,0,0,0,0,0,0,0,0,0); 
+	var sysStatus;
+	var areaCount = 0;
+    var allAway = false;
+    var allStay = false;
+    var allChime = false;
+    var allpriority = 6;
+    var allSequence = 0;
+    
+	function getSession(){return "E00BF6794F6D87DE";}
+	</script>	
+
+	<div id="w">
+		<!-- buildBanner() inserts banner html here -->
+		<!-- buildMenu() inserts status menu here -->
+		<!-- buildAreas() inserts areas html here -->
+	</div>
+
+	<script>
+	sysStatus = new Array();
+
+	function afterLoad()
+	{
+	    convertNames(areaNames);
+ 		hillsBuild = true;
+ 		variant = 3;
+		buildBanner("ComNav");
+        buildMenu(1,0,1,1,1,1);
+		buildAreas();
+
+		for(var i = (17*12); i < areaStatus.length;i++)
+			sysStatus.push(areaStatus[i]);
+		setTimeout("updateAllAreas()",1500); 
+		areaSequence[0] += 100;  
+		setTimeout("pollSequence()", 100); 
+	}
+	    // function called by iPhone to return "{active menu index, authorised menu list}"
+    // Note: the iPhone will display in the order presented here. see master.jss
+    function getMenu()
+    {
+    	if(hillsBuild)
+      		return "[0, [1,1,1,1,1,1,1,1,0,0,0,0,1]]";
+       	else
+      		if(variant == 1)
+      			return "[0, [1,1,1,1,1,1,0,0,0,0,0,0,1]]";
+     	else
+       		return "[0, [1,1,1,1,1,1,0,1,0,0,0,0,1]]";
+    }
+
+	</script>
+</body>
+</html>

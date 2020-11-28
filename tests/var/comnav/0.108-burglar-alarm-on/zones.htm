@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>ComNav :: Secure Network</title>
+  <meta name="viewport" content="initial-scale=1.0, width=device-width, maximum-scale = 1.0, minimum-scale = 1.0" />
+  <link href="/v_CN_0.108-m/m.css" rel="stylesheet">
+  <script src="/v_CN_0.108-m/master.js" charset="utf-8"></script>
+  <script src="/v_CN_0.108-m/status.js" charset="utf-8"></script>
+  <script src="/v_CN_0.108-m/lang_engau.js" charset="utf-8"></script> 
+  
+</head>
+<body onload = "afterLoad();">
+  <script>
+  var zoneDisplay = new Array(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+
+  var zoneNames = new Array("MasterBed%20Motion","Living%20Room%20Motion","Kitchen%2FDiningMotion","Theater%20Motion","Hallway%20Motion","Activity%20Room%20Motion","","Workshop%20Window%20Vib","Front%20Door","Garage%20Door","Workshop%20Door","Garage%20Window%20Vib","","","","siren%20tamper","Alfresco%20Door","Theater%20Door","Guest%20Bedroom","Kids%20Room%201","Laundry%20Door","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","");
+  var zoneSequence = new Array(167,0,0,26,4,5,0,0,0,0,0,1,0,0);
+  var zoneStatus = new Array(new Array(0,0,0,0,0,0,0,0,0),new Array(0,0,0,0,0,0,0,0,0),new Array(0,0,0,0,0,0,0,0,0),new Array(0,0,0,0,0,0,0,0,0),new Array(0,0,0,0,0,0,0,0,0),new Array(4,0,0,0,0,0,0,0,0),new Array(0,0,0,0,0,0,0,0,0),new Array(0,0,0,0,0,0,0,0,0),new Array(0,0,0,0,0,0,0,0,0),new Array(0,0,0,0,0,0,0,0,0),new Array(0,0,0,0,0,0,0,0,0),new Array(0,0,0,0,0,0,0,0,0),new Array(0,0,0,0,0,0,0,0,0),new Array(0,0,0,0,0,0,0,0,0));
+
+  function getSession(){return "E00BF6794F6D87DE";}
+  </script>
+
+  <div id="w">
+    <!-- buildBanner() inserts banner html here -->
+    <!-- buildMenu() inserts status menu here -->
+    <!-- buildZones() inserts zones html here -->
+  </div>
+ 
+  <script>
+  function afterLoad()
+  {
+  	convertNames(zoneNames);
+    buildBanner("ComNav");
+    variant = 3;
+    buildMenu(2,0,1,1,1,1);
+    buildZones();
+    setTimeout("updateAllZones()",100);
+    setTimeout("newAJAXCommand('/user/seq.xml', checkZoneSeq, false)", 1000);
+  }
+  	    // function called by iPhone to return "{active menu index, authorised menu list}"
+    // Note: the iPhone will display in the order presented here. see master.jss
+    function getMenu()
+    {
+    	if(hillsBuild)
+      		return "[1, [1,1,1,1,1,1,1,1,0,0,0,0,1]]";
+      	else
+      		if(variant == 1)
+      			return "[1, [1,1,1,1,1,1,0,0,0,0,0,0,1]]";
+      	else
+       		return "[1, [1,1,1,1,1,1,0,1,0,0,0,0,1]]";
+     }
+
+
+  </script>
+</body>
+</html>

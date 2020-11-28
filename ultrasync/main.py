@@ -36,7 +36,7 @@ from datetime import timedelta
 from .common import (
     AlarmScene, AreaStatus, CNAreaBank, ZWAreaBank, ZoneStatus,
     ZoneBank, ALARM_SCENES, AREA_STATES, ZONE_STATES, CNPanelFunction,
-    ZWPanelFunction, NX595EVendor)
+    ZWPanelFunction, NX595EVendor, AREA_STATUS_PROCESS_PRIORITY)
 from .config import UltraSyncConfig
 from urllib.parse import unquote
 from .logger import logger
@@ -272,6 +272,7 @@ class UltraSync(UltraSyncConfig):
         }
 
         if self.vendor is NX595EVendor.ZEROWIRE:
+
             urls.update({
                 # Used to acquire sequence
                 'seq.json': {
@@ -341,6 +342,14 @@ class UltraSync(UltraSyncConfig):
                     'state': no,
                 }} for no in range(0, 16 if full else 4)})
 
+            # Grab our language file
+            urls.update({
+                'lang_engau.js': {
+                    'path': '{}/eng_us.js'.format(
+                        self.__panel_url_path),
+                },
+            })
+
         else:  # self.vendor is NX595EVendor.COMNAV
 
             urls.update({
@@ -365,6 +374,15 @@ class UltraSync(UltraSyncConfig):
                     'sess': self.session_id,
                     'state': no,
                 }} for no in range(0, 12 if full else 4)})
+
+            if float(self.version) > 0.106:
+                # Grab our language file
+                urls.update({
+                    'lang_engau.js': {
+                        'path': '{}/lang_engau.js'.format(
+                            self.__panel_url_path),
+                    },
+                })
 
         progress_ratio = 100.0 / len(urls)
         progress_track = 0.0
@@ -742,9 +760,12 @@ class UltraSync(UltraSyncConfig):
             status = None
 
             # Our initial index starting point
-            idx = 3 if st_exit1 or st_exit2 else 0
+            idx = -1
 
             while not status:
+
+                # Increment our working index
+                idx += 1
 
                 if idx >= len(AREA_STATES):
                     if self.__extra_area_status:
@@ -754,17 +775,21 @@ class UltraSync(UltraSyncConfig):
                     else:
                         # Set status
                         status = AreaStatus.READY
-                        break
 
-                elif zw_vbank[idx]:
-                    if AREA_STATES[idx] != AreaStatus.READY \
+                    continue
+
+                # get our virtual index based on priority
+                v_idx = AREA_STATUS_PROCESS_PRIORITY[idx]
+
+                if zw_vbank[v_idx]:
+                    if AREA_STATES[v_idx] != AreaStatus.READY \
                             or not (st_armed or st_partial):
 
-                        status = AREA_STATES[idx]
+                        status = AREA_STATES[v_idx]
 
                         if status in (AreaStatus.ARMED_STAY,
-                                      AreaStatus.EXIT_DELAY_1,
-                                      AreaStatus.EXIT_DELAY_2):
+                                      AreaStatus.DELAY_EXIT_1,
+                                      AreaStatus.DELAY_EXIT_2):
 
                             if vbank[ZWAreaBank.NIGHT]:
                                 status += ' - Night'
@@ -772,20 +797,17 @@ class UltraSync(UltraSyncConfig):
                             elif vbank[ZWAreaBank.INSTANT]:
                                 status += ' - Instant'
 
-                    if AREA_STATES[idx] == AreaStatus.EXIT_DELAY_1:
-                        # Bump to EXIT_DELAY_2; we'll eventually hit
+                    if AREA_STATES[v_idx] == AreaStatus.DELAY_EXIT_1:
+                        # Bump to DELAY_EXIT_2; we'll eventually hit
                         # the bottom of our while loop and move past that too
                         idx += 1
 
-                elif AREA_STATES[idx] == AreaStatus.READY \
+                elif AREA_STATES[v_idx] == AreaStatus.READY \
                         and not (st_armed or st_partial):
                     # Update
                     status = AreaStatus.NOT_READY \
                         if not vbank[ZWAreaBank.UNKWN_01] \
                         else AreaStatus.NOT_READY_FORCEABLE
-
-                # increment our index by one
-                idx += 1
 
             if vbank[ZWAreaBank.UNKWN_08] or vbank[ZWAreaBank.UNKWN_09] or \
                     vbank[ZWAreaBank.UNKWN_10] or vbank[ZWAreaBank.UNKWN_11]:
@@ -864,9 +886,12 @@ class UltraSync(UltraSyncConfig):
             status = None
 
             # Our initial index starting point
-            idx = 3 if st_exit1 or st_exit2 else 0
+            idx = -1
 
             while not status:
+
+                # increment our index by one
+                idx += 1
 
                 if idx >= len(AREA_STATES):
                     if self.__extra_area_status:
@@ -880,27 +905,28 @@ class UltraSync(UltraSyncConfig):
                     else:
                         # Set status
                         status = AreaStatus.READY
-                        break
 
-                elif vbank[idx]:
-                    if AREA_STATES[idx] != AreaStatus.READY \
+                    continue
+
+                # get our virtual index based on priority
+                v_idx = AREA_STATUS_PROCESS_PRIORITY[idx]
+
+                if vbank[v_idx]:
+                    if AREA_STATES[v_idx] != AreaStatus.READY \
                             or not (st_armed or st_partial):
 
-                        status = AREA_STATES[idx]
+                        status = AREA_STATES[v_idx]
 
-                    if AREA_STATES[idx] == AreaStatus.EXIT_DELAY_1:
-                        # Bump to EXIT_DELAY_2; we'll eventually hit
+                    if AREA_STATES[v_idx] == AreaStatus.DELAY_EXIT_1:
+                        # Bump to DELAY_EXIT_2; we'll eventually hit
                         # the bottom of our while loop and move past that
                         # too
                         idx += 1
 
-                elif AREA_STATES[idx] == AreaStatus.READY \
+                elif AREA_STATES[v_idx] == AreaStatus.READY \
                         and not (st_armed or st_partial):
                     # Update
                     status = AreaStatus.NOT_READY
-
-                # increment our index by one
-                idx += 1
 
             if vbank[CNAreaBank.UNKWN_03] or vbank[CNAreaBank.UNKWN_04] or \
                     vbank[CNAreaBank.UNKWN_05] or vbank[CNAreaBank.UNKWN_06]:
