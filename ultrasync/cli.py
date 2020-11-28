@@ -95,6 +95,10 @@ def print_version_msg():
               help='Specify the alarm scene to change to. Possible values '
               'are "{}", and "{}".'.format(
                   '", "'.join(ALARM_SCENES[:-1]), ALARM_SCENES[-1]))
+@click.option('--area', '-a', default=0, type=int, metavar='AREA',
+              help='Specify the Area you wish to target with a --scene (-s) '
+              'action. If no area is specified, then *all* areas are '
+              'targeted.')
 @click.option('--full-debug-dump', is_flag=True,
               help='Dump a full set of tracing files to a archive for '
               'comparison/debug purposes. Usually the --debug-dump is '
@@ -106,7 +110,7 @@ def print_version_msg():
 @click.option('--version', '-V', is_flag=True,
               help='Display the version of the ultrasync library and exit.')
 def main(config, debug_dump, full_debug_dump, scene, details, watch,
-         verbose, version):
+         area, verbose, version):
     """
     Wrapper to ultrasync library.
     """
@@ -183,10 +187,7 @@ def main(config, debug_dump, full_debug_dump, scene, details, watch,
             actioned = True
 
     if scene:
-        if not usync.set(state=scene):
-            # Failed to set scene
-            logger.error(
-                'Could not load set scene to: {}'.format(scene))
+        if not usync.set_scene(areas=area, scene=scene):
             sys.exit(1)
         actioned = True
 
