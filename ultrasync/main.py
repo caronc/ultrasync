@@ -427,17 +427,26 @@ class UltraSync(UltraSyncConfig):
         progress.update(100.001 - progress_track)
         return
 
-    def set_scene(self, areas=None, scene=AlarmScene.DISARMED):
+    def set(self, area=1, state=AlarmScene.DISARMED):
         """
-        Sets Alarm Scene
+        This will be removed; it is only present for backwards compatibility
+
+        """
+        logger.deprecate(
+            'set() is being depricated and replaced with set_alarm()')
+        return self.set_alarm(areas=area, state=state)
+
+    def set_alarm(self, areas=None, state=AlarmScene.DISARMED):
+        """
+        Sets Alarm
 
         """
         if not self.session_id and not self.login():
             return False
 
-        if scene not in ALARM_SCENES:
+        if state not in ALARM_SCENES:
             logger.error(
-                '{} is not valid alarm scene'.format(scene))
+                '{} is not valid alarm state'.format(state))
             return False
 
         if not areas:
@@ -480,12 +489,12 @@ class UltraSync(UltraSyncConfig):
                     'mask': 1 << (area - 1) % 8,
                 })
 
-                if scene == AlarmScene.STAY:
+                if state == AlarmScene.STAY:
                     payload.update({
                         'fnum': ZWPanelFunction.AREA_STAY,
                     })
 
-                elif scene == AlarmScene.AWAY:
+                elif state == AlarmScene.AWAY:
                     payload.update({
                         'fnum': ZWPanelFunction.AREA_AWAY,
                     })
@@ -505,12 +514,12 @@ class UltraSync(UltraSyncConfig):
                     'data1': 1 << (area - 1) % 8,
                 })
 
-                if scene == AlarmScene.STAY:
+                if state == AlarmScene.STAY:
                     payload.update({
                         'data2': CNPanelFunction.AREA_STAY,
                     })
 
-                elif scene == AlarmScene.AWAY:
+                elif state == AlarmScene.AWAY:
                     payload.update({
                         'data2': CNPanelFunction.AREA_AWAY,
                     })
@@ -528,11 +537,11 @@ class UltraSync(UltraSyncConfig):
 
             if not response:
                 logger.info(
-                    'Failed to send {} scene to Area {}'.format(scene, area))
+                    'Failed to send {} state to Area {}'.format(state, area))
                 has_error = True
 
             logger.info(
-                'Sent {} scene to Area {} Successfully'.format(scene, area))
+                'Sent {} state to Area {} Successfully'.format(state, area))
 
         return not has_error
 

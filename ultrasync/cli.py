@@ -91,7 +91,7 @@ def print_version_msg():
 @click.option('--watch', '-w', is_flag=True, help='Watch panel')
 @click.option('--details', '-d', is_flag=True, help='Print status')
 @click.option('--scene', '-s', type=str,
-              metavar='SCENE',
+              metavar='STATE',
               help='Specify the alarm scene to change to. Possible values '
               'are "{}", and "{}".'.format(
                   '", "'.join(ALARM_SCENES[:-1]), ALARM_SCENES[-1]))
@@ -187,7 +187,7 @@ def main(config, debug_dump, full_debug_dump, scene, details, watch,
             actioned = True
 
     if scene:
-        if not usync.set_scene(areas=area, scene=scene):
+        if not usync.set_alarm(areas=area, state=scene):
             sys.exit(1)
         actioned = True
 
