@@ -1298,7 +1298,7 @@ class UltraSync(UltraSyncConfig):
 
         """
 
-        logger.info(
+        logger.debug(
             'Updating Area information on bank {}'.format(bank))
 
         if not self.session_id and not self.login():
@@ -1360,7 +1360,7 @@ class UltraSync(UltraSyncConfig):
 
         """
 
-        logger.info(
+        logger.debug(
             'Updating Area information on bank {}'.format(bank))
 
         if not self.session_id and not self.login():
@@ -1421,7 +1421,7 @@ class UltraSync(UltraSyncConfig):
         }
         """
 
-        logger.info(
+        logger.debug(
             'Updating Zone/Sensor information on bank {}'.format(bank))
 
         if not self.session_id and not self.login():
@@ -1461,7 +1461,7 @@ class UltraSync(UltraSyncConfig):
             </response>
         """
 
-        logger.info(
+        logger.debug(
             'Updating Zone/Sensor information on bank {}'.format(bank))
 
         if not self.session_id and not self.login():
