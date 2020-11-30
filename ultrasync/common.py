@@ -228,13 +228,14 @@ AREA_STATUS_PROCESS_PRIORITY = (
 
     0,   # AreaStatus.ARMED_AWAY
     1,   # AreaStatus.ARMED_STAY
-    2,   # AreaStatus.READY
 
     10,  # AreaStatus.SENSOR_BYPASS
     11,  # AreaStatus.SENSOR_TROUBLE
     12,  # AreaStatus.SENSOR_TAMPER
     13,  # AreaStatus.SENSOR_BATTERY
     14,  # AreaStatus.SENSOR_SUPERVISION
+
+    2,   # AreaStatus.READY
 
     # Last entry empty
     15,
