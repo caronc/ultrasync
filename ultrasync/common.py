@@ -36,6 +36,9 @@ class NX595EVendor(object):
     # ComNav UltraSync
     COMNAV = 'comnav'
 
+    # xGen UltraSync
+    XGEN = 'xgen'
+
 
 class ZWPanelFunction(object):
     """
@@ -46,6 +49,12 @@ class ZWPanelFunction(object):
     AREA_STAY = 1
     AREA_CHIME_TOGGLE = 10
     AREA_AWAY = 15
+
+class XGPanelFunction(ZWPanelFunction):
+    """
+    xGen ZeroWire Function Commands
+    """
+    pass
 
 
 class CNPanelFunction(object):
@@ -111,9 +120,22 @@ class ZWAreaBank(object):
     UNKWN_35 = 35
     UNKWN_36 = 36
     UNKWN_37 = 37
-    UNKWN_38 = 38
-    UNKWN_39 = 39
 
+
+class XGAreaBank(ZWAreaBank):
+    """
+    Defines the Bank Identifiers for xGen ZeroWire Area Queries
+
+    By identifying the bank and breaking it down, it makes the code
+    MUCH easier to read for others.  It also makes the code easier to
+    debug down the road.
+
+    This list has been purely generated through reverse engineering the
+    information available to me using the existing Ultrasync Alarm Panel
+    interface.
+
+    """
+    pass
 
 class CNAreaBank(object):
     """

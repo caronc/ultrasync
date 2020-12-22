@@ -1,0 +1,65 @@
+<html><head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<title>xGen :: Secure Network</title>
+	<meta name="viewport" content="initial-scale=1.0, width=device-width, maximum-scale = 1.0, minimum-scale = 1.0">
+    <script src="/v_XG_04.01-B/eng_eu.js" charset="utf-8"></script>
+	<link href="/v_XG_04.01-B/m.css" rel="stylesheet">
+	<script src="/v_XG_04.01-B/master.js" charset="utf-8"></script>
+	<script src="/v_XG_04.01-B/status.js" charset="utf-8"></script>
+
+</head>
+<body onload="afterLoad();">
+	<script>
+	var areaDisplay = [];
+
+	var areaNames = ["SENSOREN","RAMEN%20EN%20DEUREN"];
+	var areaSequence = [241];
+	var areaStatus = ["03000000000000000000000000000000000000000000000000000000000000000000000000000000"];
+	var entryTime = [0,0];
+	var exitTime = [0,0];
+	var sysStatus = [];
+	var areaCount = 0;
+    var allAway = false;
+    var allStay = false;
+    var allChime = false;
+    var allpriority = 6;
+    var allSequence = 0;
+    var tampers = [];
+
+	function getSession(){return "595A3FCFE94DC507";}
+	</script>
+
+	<div id="w">
+		<!-- buildBanner() inserts banner html here -->
+		<!-- buildMenu() inserts status menu here -->
+		<!-- buildAreas() inserts areas html here -->
+	<div id="ban" class="ban"><button type="button" class="mnu-btn" onclick="toggle_vis('mnu');">Menu</button><p>UltraSync</p></div><div id="mnu"><form method="post" id="newpage" action="/logout.cgi" name="newpage1">     <input type="hidden" id="sess1" name="sess" value="595A3FCFE94DC507">     </form>     <ul class="nav">     <li><a onclick="document.getElementById('newpage').submit(); ">Logout</a></li>     <li class="active"><a onclick="document.getElementById('newpage').setAttribute('action', '/user/area.htm'); document.getElementById('newpage').submit();">Arm/Disarm</a></li>     <li><a onclick="document.getElementById('newpage').setAttribute('action','/user/zones.htm');document.getElementById('newpage').submit(); ">Zones</a></li><li><a onclick="document.getElementById('newpage').setAttribute('action','/muser/video.htm');document.getElementById('newpage').submit(); ">Cameras</a></li><li><a onclick="document.getElementById('newpage').setAttribute('action', '/user/rooms.htm'); document.getElementById('newpage').submit();">Rooms</a></li><li><a onclick="document.getElementById('newpage').setAttribute('action','/user/history.htm');document.getElementById('newpage').submit(); ">History</a></li><li><a onclick="document.getElementById('newpage').setAttribute('action','/user/configpins.htm');document.getElementById('newpage').submit(); ">Users</a></li><li><a onclick="document.getElementById('newpage').setAttribute('action','/muser/config2.htm');document.getElementById('newpage').submit(); ">Settings</a></li></ul></div><div id="at" class="main"><div id="a0" class="box"><h1 class="bg-grn">All Partitions</h1>     <h2>No System Faults</h2>     <button type="button" class="ba bg-gry" onclick="newAJAXCommand('/user/keyfunction.cgi', cgiResponse, false,'fnum=15&amp;start=0&amp;mask=0')"><div class="bi"></div>Away</button>     <button type="button" class="bs bg-gry" onclick="newAJAXCommand('/user/keyfunction.cgi', cgiResponse, false,'fnum=1&amp;start=0&amp;mask=0')"><div class="bi"></div>Stay</button>     <button type="button" class="bo" onclick="newAJAXCommand('/user/keyfunction.cgi', cgiResponse, false,'fnum=0&amp;start=0&amp;mask=0')"><div class="bi"></div>Off</button>     <button type="button" class="bc bg-gry" onclick="newAJAXCommand('/user/keyfunction.cgi', cgiResponse, false,'fnum=10&amp;start=0&amp;mask=0')"><div class="bi"></div>Chime</button></div><div id="a1" class="box"><h1 class="bg-grn">SENSOREN</h1>     <h2>Ready</h2>     <button type="button" class="ba bg-gry" onclick="newAJAXCommand('/user/keyfunction.cgi', cgiResponse, false,'fnum=15&amp;start=0&amp;mask=1')"><div class="bi"></div>Away</button>     <button type="button" class="bs bg-gry" onclick="newAJAXCommand('/user/keyfunction.cgi', cgiResponse, false,'fnum=1&amp;start=0&amp;mask=1')"><div class="bi"></div>Stay</button>     <button type="button" class="bo" onclick="newAJAXCommand('/user/keyfunction.cgi', cgiResponse, false,'fnum=0&amp;start=0&amp;mask=1')"><div class="bi"></div>Off</button>     <button type="button" class="bc bg-gry" onclick="newAJAXCommand('/user/keyfunction.cgi', cgiResponse, false,'fnum=10&amp;start=0&amp;mask=1')"><div class="bi"></div>Chime</button></div><div id="a2" class="box"><h1 class="bg-grn">RAMEN EN DEUREN</h1>     <h2>Ready</h2>     <button type="button" class="ba bg-gry" onclick="newAJAXCommand('/user/keyfunction.cgi', cgiResponse, false,'fnum=15&amp;start=0&amp;mask=2')"><div class="bi"></div>Away</button>     <button type="button" class="bs bg-gry" onclick="newAJAXCommand('/user/keyfunction.cgi', cgiResponse, false,'fnum=1&amp;start=0&amp;mask=2')"><div class="bi"></div>Stay</button>     <button type="button" class="bo" onclick="newAJAXCommand('/user/keyfunction.cgi', cgiResponse, false,'fnum=0&amp;start=0&amp;mask=2')"><div class="bi"></div>Off</button>     <button type="button" class="bc bg-gry" onclick="newAJAXCommand('/user/keyfunction.cgi', cgiResponse, false,'fnum=10&amp;start=0&amp;mask=2')"><div class="bi"></div>Chime</button></div></div></div>
+
+	<script>
+			sysStatus = [];
+
+	function afterLoad()
+	{
+		convertNames(areaNames);
+		buildBanner(defaultNames[22]);
+        buildMenu(1,0,1,1,1,1,1);
+		buildAreas();
+		setTimeout("updateAllAreas()",1500);
+		areaSequence[0] += 100;
+		setTimeout("pollSequence()", 100);
+        timeOutMS = 20000;
+        region = 2;
+
+
+	}
+
+	// function called by iPhone to return "{active menu index, authorised menu list}"
+	// Note: the iPhone will display in the order presented here. see master.jss
+	function getMenu()
+	{
+		return "[0,[1,1,1,1,1,1,1,0]]";
+	}
+	</script>
+
+</body></html>

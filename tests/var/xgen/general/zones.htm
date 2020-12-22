@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>UltraSync :: Secure Network</title>
+  <meta name="viewport" content="initial-scale=1.0, width=device-width, maximum-scale = 1.0, minimum-scale = 1.0" />
+  <script src="/v_ZW_03.02-C/eng_us.js" charset="utf-8"></script>
+   <link href="/v_ZW_03.02-C/m.css" rel="stylesheet">
+  <script src="/v_ZW_03.02-C/master.js" charset="utf-8"></script>
+  <script src="/v_ZW_03.02-C/status.js" charset="utf-8"></script>
+
+</head>
+<body onload = "afterLoad();">
+  <script>
+  var zoneDisplay = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+
+  var zoneNames = ["Sensor%201","Sensor%202","Sensor%203","Sensor%204","%21","%21","%21","Sensor%205","%21","Sensor%206","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21"];
+  var zoneSequence = [110,0,2,73,0,38,0,0,0,10,83,36,0,0,0,0,16,0];
+  var zoneStatus = ["000000000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000","000200000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000","E0FCFFFFFFFFFFFFFFFFFFFF"];
+  var ismaster = 1;
+  var isinstaller = 0;
+
+  function getSession(){return "61F19CA7A3AEFFF2";}
+  </script>
+
+  <div id="w">
+    <!-- buildBanner() inserts banner html here -->
+    <!-- buildMenu() inserts status menu here -->
+    <!-- buildZones() inserts zones html here -->
+  </div>
+
+  <script>
+  function afterLoad()
+  {
+  	convertNames(zoneNames);
+    buildBanner(defaultNames[22]);
+    buildMenu(2,0,1,1,1,1,1);
+ 	try{
+ 		zoneStatus = JSON.parse(zoneStatus);
+ 	}catch(ex){}
+
+    buildZones();
+    timeOutMS = 20000;
+    setTimeout("updateAllZones()",100);
+    setTimeout("newAJAXCommand('/user/seq.json', checkZoneSeq, false)", 1000);
+  }
+
+  // function called by iPhone to return "{active menu index, authorised menu list}"
+  // Note: the iPhone will display in the order presented here. see master.jss
+  function getMenu()
+  {
+    return "[1, [1,1,1,1,1,1,1,0]]";
+  }
+  </script>
+</body>
+</html>

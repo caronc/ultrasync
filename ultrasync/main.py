@@ -180,6 +180,9 @@ class UltraSync(UltraSyncConfig):
         elif match.group('vendor') == 'CN':
             self.vendor = NX595EVendor.COMNAV
 
+        elif match.group('vendor') == 'XG':
+            self.vendor = NX595EVendor.XGEN
+
         else:
             logger.error(
                 'Unsupported vendor {}'.format(match.group('vendor')))
@@ -271,7 +274,7 @@ class UltraSync(UltraSyncConfig):
             },
         }
 
-        if self.vendor is NX595EVendor.ZEROWIRE:
+        if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN):
 
             urls.update({
                 # Used to acquire sequence
@@ -483,7 +486,7 @@ class UltraSync(UltraSyncConfig):
                 'sess': self.session_id,
             }
 
-            if self.vendor is NX595EVendor.ZEROWIRE:
+            if self.vendor == NX595EVendor.ZEROWIRE:
                 payload.update({
                     'start': int(math.floor((area - 1) / 8)),
                     'mask': 1 << (area - 1) % 8,
@@ -505,6 +508,10 @@ class UltraSync(UltraSyncConfig):
                     })
 
                 rtype = HubResponseType.JSON
+
+            elif self.vendor == NX595EVendor.XGEN:
+                # TODO
+                pass
 
             else:  # self.vendor is NX595EVendor.COMNAV
 
@@ -617,9 +624,13 @@ class UltraSync(UltraSyncConfig):
         #
         # Get our Area Sequence
         #
-        if self.vendor is NX595EVendor.ZEROWIRE:
-            # It looks like this in the area.htm response
-            #  var areaSequence = [149,0,0,0,0,0,0,0,0,0,0,0];
+        if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN):
+            # Interlogix entries look like:
+            #   It looks like this in the area.htm response
+            #    var areaSequence = [149,0,0,0,0,0,0,0,0,0,0,0];
+
+            # xGen entries look like:
+            #    var areaSequence = [149];
             match = re.search(
                 r'var areaSequence\s*=\s*'
                 r'(?P<sequence>[^]]+]).*', response, re.M)
@@ -642,7 +653,7 @@ class UltraSync(UltraSyncConfig):
         #
         # Get our Area Status (Bank States)
         #
-        if self.vendor is NX595EVendor.ZEROWIRE:
+        if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN):
             # It looks like this in the area.htm response:
             #  var areaStatus = ["0100000000...000000"];
             match = re.search(
@@ -668,7 +679,7 @@ class UltraSync(UltraSyncConfig):
         #
         # Get our Area Names
         #
-        if self.vendor is NX595EVendor.ZEROWIRE:
+        if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN):
             # It looks like this in the area.htm response:
             #  var areaNames = ["","%21","%21","%21","%21","%21","%21","%21"];
             match = re.search(
@@ -690,9 +701,9 @@ class UltraSync(UltraSyncConfig):
                 return False
             area_names = json.loads('[{}]'.format(match.group('area_names')))
 
-            # Ensure our sequence has as many elements in its array as
-            # there are areaName entries
-            sequence.extend([0] * (len(area_names) - len(sequence)))
+        # Ensure our sequence has as many elements in its array as
+        # there are areaName entries
+        sequence.extend([0] * (len(area_names) - len(sequence)))
 
         # Store our Areas ('%21' == '!'; these are un-used areas)
         self.areas = \
@@ -702,7 +713,7 @@ class UltraSync(UltraSyncConfig):
                  'sequence': sequence[x],
                  'bank_state': bank_states[math.floor(x / 8) * 17:
                                            (math.floor(x / 8) * 17) + 17]
-                 if self.vendor is NX595EVendor.COMNAV
+                 if self.vendor in (NX595EVendor.COMNAV, NX595EVendor.XGEN) 
                  else bank_states[x]}
 
              for x, y in enumerate(area_names)
@@ -716,6 +727,16 @@ class UltraSync(UltraSyncConfig):
         configuration
         """
         return getattr(self, '{}_process_areas'.format(self.vendor))()
+
+    def xgen_process_areas(self):
+        """
+        Process our area information based on current configuration
+
+        """
+        # The following was reverse-engineered from status.js on the xGen
+        # ZeroWire (UltraSync) NX-595E Device:
+        #TODO
+        return True
 
     def zerowire_process_areas(self):
         """
@@ -983,6 +1004,14 @@ class UltraSync(UltraSyncConfig):
         """
         return getattr(self, '{}_process_zones'.format(self.vendor))()
 
+    def xgen_process_zones(self):
+        """
+        Updates our zone/sensor information based on new configuration
+
+        """
+        # TODO
+        return True
+
     def zerowire_process_zones(self):
         """
         Updates our zone/sensor information based on new configuration
@@ -1151,7 +1180,7 @@ class UltraSync(UltraSyncConfig):
         #
         # Get our Zone Sequence
         #
-        if self.vendor is NX595EVendor.ZEROWIRE:
+        if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN):
             # It looks like this in the zone.htm response:
             #  var zoneSequence = [110,0,2,73,8,38,0,0,0,10,83,0,0,0,0,0,16,0];
             match = re.search(
@@ -1178,7 +1207,7 @@ class UltraSync(UltraSyncConfig):
         #
         # Get our Zone Sequence
         #
-        if self.vendor is NX595EVendor.ZEROWIRE:
+        if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN):
             # It looks like this in the zone.htm response:
             #  var zoneStatus = ["0100000000...000000"];
             match = re.search(
@@ -1210,7 +1239,7 @@ class UltraSync(UltraSyncConfig):
         #
         # Get our Zone Names
         #
-        if self.vendor is NX595EVendor.ZEROWIRE:
+        if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN):
             # It looks like this in the zones.htm response:
             #  var zoneNames = ["Front%20door","Garage%20Door","..."];
             match = re.search(
@@ -1248,7 +1277,7 @@ class UltraSync(UltraSyncConfig):
         #
         # Get our Master Status
         #
-        if self.vendor is NX595EVendor.ZEROWIRE:
+        if self.vendor == NX595EVendor.ZEROWIRE:
             # It looks like this in the zone.htm response:
             #  var master = 1; # 1 if master, 0 if not
             match = re.search(
