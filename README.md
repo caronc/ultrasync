@@ -4,7 +4,7 @@ Compatible with both NX-595E [Hills](https://www.hills.com.au/) ComNav and [Inte
 
 ![ZeroWire Hub Image](https://raw.githubusercontent.com/caronc/ultrasync/master/static/zerowire_hub.jpeg)
 
-[![Paypal](https://img.shields.io/badge/paypal-donate-green.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=MHANV39UZNQ5E)
+[![Paypal](https://img.shields.io/badge/paypal-donate-green.svg)](https://paypal.me/lead2gold?locale.x=en_US)
 [![Follow](https://img.shields.io/twitter/follow/l2gnux)](https://twitter.com/l2gnux/)<br/>
 [![Python](https://img.shields.io/pypi/pyversions/ultrasync.svg?style=flat-square)](https://pypi.org/project/ultrasync/)
 [![Build Status](https://travis-ci.org/caronc/ultrasync.svg?branch=master)](https://travis-ci.org/caronc/ultrasync)
@@ -129,4 +129,4 @@ You can also (optionally) set the following global variables to provide the equi
 
 ## Disclaimer
 
-This software was created by reverse engineering my own personal security system. All of this code was generated through trial and error since there is no documentation that I could find that explains the registers. If you can help out by filling in some of the blanks throughout the code base, I would be greatly appreciative of it! Alternatively [buying me a coffee](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=MHANV39UZNQ5E) greatly inspires me to continue improving the application.
+This software was created by reverse engineering my own personal security system. All of this code was generated through trial and error since there is no documentation that I could find that explains the registers. If you can help out by filling in some of the blanks throughout the code base, I would be greatly appreciative of it! Alternatively [buying me a coffee](https://paypal.me/lead2gold?locale.x=en_US) greatly inspires me to continue improving the application.
