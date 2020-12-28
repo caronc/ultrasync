@@ -78,9 +78,65 @@ def test_xgen_general_communication(mock_post):
     assert isinstance(uobj.areas, dict)
     # we only have 1 area defined in our test file
     assert len(uobj.areas) == 2
-    assert uobj.areas[0]['name'] == 'SENSOREN'
+    assert uobj.areas[0]['name'] == 'Area 1'
     assert uobj.areas[0]['bank'] == 0
-    assert uobj.areas[0]['sequence'] == 241
-    #TODOassert uobj.areas[0]['status'] == 'Ready'
+    assert uobj.areas[0]['sequence'] == 126
+    assert uobj.areas[0]['status'] == 'Ready'
+
+    assert uobj.areas[1]['name'] == 'Area 2'
+    assert uobj.areas[1]['bank'] == 1
+    assert uobj.areas[1]['sequence'] == 0
+    assert uobj.areas[1]['status'] == 'Ready'
 
     assert isinstance(uobj.zones, dict)
+    # we have 8 zones defined in our test file spread across
+    # different banks:
+    assert len(uobj.zones) == 15
+    bank = 1
+    assert uobj.zones[bank]['name'] == 'Sensor 1'
+    assert uobj.zones[bank]['bank'] == bank
+    assert uobj.zones[bank]['sequence'] == 1
+    assert uobj.zones[bank]['status'] == 'Ready'
+    assert uobj.zones[bank]['can_bypass'] is True
+
+    bank = 2
+    assert uobj.zones[bank]['name'] == 'Sensor 2'
+    assert uobj.zones[bank]['bank'] == bank
+    assert uobj.zones[bank]['sequence'] == 1
+    assert uobj.zones[bank]['status'] == 'Ready'
+    assert uobj.zones[bank]['can_bypass'] is True
+
+    bank = 3
+    assert uobj.zones[bank]['name'] == 'Sensor 3'
+    assert uobj.zones[bank]['bank'] == bank
+    assert uobj.zones[bank]['sequence'] == 1
+    assert uobj.zones[bank]['status'] == 'Ready'
+    assert uobj.zones[bank]['can_bypass'] is True
+
+    bank = 4
+    assert uobj.zones[bank]['name'] == 'Sensor 4'
+    assert uobj.zones[bank]['bank'] == bank
+    assert uobj.zones[bank]['sequence'] == 1
+    assert uobj.zones[bank]['status'] == 'Ready'
+    assert uobj.zones[bank]['can_bypass'] is True
+
+    bank = 10
+    assert uobj.zones[bank]['name'] == 'Sensor 10'
+    assert uobj.zones[bank]['bank'] == bank
+    assert uobj.zones[bank]['sequence'] == 1
+    assert uobj.zones[bank]['status'] == 'Ready'
+    assert uobj.zones[bank]['can_bypass'] is True
+
+    bank = 13
+    assert uobj.zones[bank]['name'] == 'Sensor 13'
+    assert uobj.zones[bank]['bank'] == bank
+    assert uobj.zones[bank]['sequence'] == 1
+    assert uobj.zones[bank]['status'] == 'Ready'
+    assert uobj.zones[bank]['can_bypass'] is True
+
+    bank = 15
+    assert uobj.zones[bank]['name'] == 'Sensor 15'
+    assert uobj.zones[bank]['bank'] == bank
+    assert uobj.zones[bank]['sequence'] == 1
+    assert uobj.zones[bank]['status'] == 'Ready'
+    assert uobj.zones[bank]['can_bypass'] is True

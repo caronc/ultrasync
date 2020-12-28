@@ -34,9 +34,9 @@ from zipfile import ZipFile
 from datetime import datetime
 from datetime import timedelta
 from .common import (
-    AlarmScene, AreaStatus, CNAreaBank, ZWAreaBank, ZoneStatus,
+    AlarmScene, AreaStatus, CNAreaBank, XGZWAreaBank, ZoneStatus,
     ZoneBank, ALARM_SCENES, AREA_STATES, ZONE_STATES, CNPanelFunction,
-    ZWPanelFunction, NX595EVendor, AREA_STATUS_PROCESS_PRIORITY)
+    XGZWPanelFunction, NX595EVendor, AREA_STATUS_PROCESS_PRIORITY)
 from .config import UltraSyncConfig
 from urllib.parse import unquote
 from .logger import logger
@@ -61,6 +61,12 @@ class UltraSync(UltraSyncConfig):
     """
     A wrapper to the UltraSync Alarm Panel
     """
+
+    # Tracks our Maximum Sequence Count
+    max_sequence_count = 12
+
+    # Tracks our Maximum Area Count
+    max_area_count = 8
 
     panel_encoding = 'utf-8'
 
@@ -97,7 +103,7 @@ class UltraSync(UltraSyncConfig):
         self.__extra_area_status = []
 
         # Taken straight out of Interlogix ZeroWire status.js
-        self.__zw_area_state_byte = [
+        self.__xgzw_area_state_byte = [
             6, 4, 0, 16, 20, 18, 22, 8, 10, 12, 64, 66, 68, 70, 72, 14, 56]
 
         # Our zones get populated after we connect
@@ -376,7 +382,8 @@ class UltraSync(UltraSyncConfig):
                 'payload': {
                     'sess': self.session_id,
                     'state': no,
-                }} for no in range(0, 12 if full else 4)})
+                }} for no in range(
+                    0, UltraSync.max_sequence_count if full else 4)})
 
             if float(self.version) > 0.106:
                 # Grab our language file
@@ -486,7 +493,7 @@ class UltraSync(UltraSyncConfig):
                 'sess': self.session_id,
             }
 
-            if self.vendor == NX595EVendor.ZEROWIRE:
+            if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN):
                 payload.update({
                     'start': int(math.floor((area - 1) / 8)),
                     'mask': 1 << (area - 1) % 8,
@@ -494,24 +501,20 @@ class UltraSync(UltraSyncConfig):
 
                 if state == AlarmScene.STAY:
                     payload.update({
-                        'fnum': ZWPanelFunction.AREA_STAY,
+                        'fnum': XGZWPanelFunction.AREA_STAY,
                     })
 
                 elif state == AlarmScene.AWAY:
                     payload.update({
-                        'fnum': ZWPanelFunction.AREA_AWAY,
+                        'fnum': XGZWPanelFunction.AREA_AWAY,
                     })
 
                 else:   # AlarmScene.DISARMED
                     payload.update({
-                        'fnum': ZWPanelFunction.AREA_DISARM,
+                        'fnum': XGZWPanelFunction.AREA_DISARM,
                     })
 
                 rtype = HubResponseType.JSON
-
-            elif self.vendor == NX595EVendor.XGEN:
-                # TODO
-                pass
 
             else:  # self.vendor is NX595EVendor.COMNAV
 
@@ -701,9 +704,9 @@ class UltraSync(UltraSyncConfig):
                 return False
             area_names = json.loads('[{}]'.format(match.group('area_names')))
 
-        # Ensure our sequence has as many elements in its array as
-        # there are areaName entries
-        sequence.extend([0] * (len(area_names) - len(sequence)))
+        # Ensure we've defined all of our possible sequences and areas
+        sequence.extend([0] * (UltraSync.max_sequence_count - len(sequence)))
+        area_names.extend(['!'] * (UltraSync.max_area_count - len(area_names)))
 
         # Store our Areas ('%21' == '!'; these are un-used areas)
         self.areas = \
@@ -713,8 +716,8 @@ class UltraSync(UltraSyncConfig):
                  'sequence': sequence[x],
                  'bank_state': bank_states[math.floor(x / 8) * 17:
                                            (math.floor(x / 8) * 17) + 17]
-                 if self.vendor in (NX595EVendor.COMNAV, NX595EVendor.XGEN) 
-                 else bank_states[x]}
+                 if self.vendor == NX595EVendor.COMNAV
+                 else bank_states[0]}
 
              for x, y in enumerate(area_names)
              if y != '%21' and y != '!'}
@@ -734,8 +737,142 @@ class UltraSync(UltraSyncConfig):
 
         """
         # The following was reverse-engineered from status.js on the xGen
-        # ZeroWire (UltraSync) NX-595E Device:
-        #TODO
+        # ZeroWire (UltraSync) NX-595E Device
+
+        # from the function updateArea():
+        for bank, area in self.areas.items():
+
+            # define our mask
+            mask = (1 << (bank % 8))
+
+            # Prepare ourselves a virtual states for reference that can be
+            # later indexed by name for readability. Basically in
+            # status.js all references are by -> bank[idx:idx + 2];
+            #
+            # This just translate mappings to that:
+            #   0:2 - index 0
+            #   2:4 - index 1
+            #   4:6 - index 2
+            #   ...
+            #   78:80 - index 39
+            vbank = [int(area['bank_state'][s:s + 2], 16) & mask
+                     for s in range(0, 80, 2)]
+
+            # update our vbank to be more like the comnav one containing
+            # only 17 entries:
+            xg_vbank = [vbank[int(self.__xgzw_area_state_byte[s] / 2)]
+                        for s in range(0, len(self.__xgzw_area_state_byte))]
+
+            # Partially Armed State
+            st_partial = bool(vbank[XGZWAreaBank.PARTIAL])
+
+            # Armed State
+            st_armed = bool(vbank[XGZWAreaBank.ARMED])
+
+            # Exit Mode
+            st_exit1 = bool(vbank[XGZWAreaBank.EXIT_MODE01])
+            st_exit2 = bool(vbank[XGZWAreaBank.EXIT_MODE02])
+
+            # Chime Set
+            st_chime = bool(vbank[XGZWAreaBank.CHIME])
+
+            # Priority, the lower, the higher it is; 6 being the lowest
+            priority = 6
+
+            # Now we'll attempt to detect our status
+            status = None
+
+            # Our initial index starting point
+            idx = -1
+
+            while not status:
+
+                # Increment our working index
+                idx += 1
+
+                if idx >= len(AREA_STATES):
+                    if self.__extra_area_status:
+                        status = \
+                            self.__extra_area_status[idx - len(AREA_STATES)]
+
+                    else:
+                        # Set status
+                        status = AreaStatus.READY
+
+                    continue
+
+                # get our virtual index based on priority
+                v_idx = AREA_STATUS_PROCESS_PRIORITY[idx]
+
+                if xg_vbank[v_idx]:
+                    if AREA_STATES[v_idx] != AreaStatus.READY \
+                            or not (st_armed or st_partial):
+
+                        status = AREA_STATES[v_idx]
+
+                        if status in (AreaStatus.ARMED_STAY,
+                                      AreaStatus.DELAY_EXIT_1,
+                                      AreaStatus.DELAY_EXIT_2):
+
+                            if vbank[XGZWAreaBank.NIGHT]:
+                                status += ' - Night'
+
+                            elif vbank[XGZWAreaBank.INSTANT]:
+                                status += ' - Instant'
+
+                    if AREA_STATES[v_idx] == AreaStatus.DELAY_EXIT_1:
+                        # Bump to DELAY_EXIT_2; we'll eventually hit
+                        # the bottom of our while loop and move past that too
+                        idx += 1
+
+                elif AREA_STATES[v_idx] == AreaStatus.READY \
+                        and not (st_armed or st_partial):
+                    # Update
+                    status = AreaStatus.NOT_READY \
+                        if not vbank[XGZWAreaBank.UNKWN_01] \
+                        else AreaStatus.NOT_READY_FORCEABLE
+
+            if vbank[XGZWAreaBank.UNKWN_08] or \
+                    vbank[XGZWAreaBank.UNKWN_09] or \
+                    vbank[XGZWAreaBank.UNKWN_10] or \
+                    vbank[XGZWAreaBank.UNKWN_11]:
+
+                # Assign priority to 1
+                priority = 1
+
+            elif vbank[XGZWAreaBank.UNKWN_33] or \
+                    vbank[XGZWAreaBank.UNKWN_34] or \
+                    vbank[XGZWAreaBank.UNKWN_35] or \
+                    vbank[XGZWAreaBank.UNKWN_36] or \
+                    self.__extra_area_status:
+
+                # Assign priority to 2
+                priority = 2
+
+            elif st_partial or vbank[XGZWAreaBank.UNKWN_32]:
+                # Assign priority to 3
+                priority = 3
+
+            elif st_armed:
+                # Assign priority to 4
+                priority = 4
+
+            elif not vbank[XGZWAreaBank.UNKWN_00]:
+                # Assign priority to 5
+                priority = 5
+
+            area.update({
+                'priority': priority,
+                'states': {
+                    'armed': st_armed,
+                    'partial': st_partial,
+                    'chime': st_chime,
+                    'exit1': st_exit1,
+                    'exit2': st_exit2,
+                },
+                'status': status,
+            })
+
         return True
 
     def zerowire_process_areas(self):
@@ -767,21 +904,21 @@ class UltraSync(UltraSyncConfig):
 
             # update our vbank to be more like the comnav one containing
             # only 17 entries:
-            zw_vbank = [vbank[int(self.__zw_area_state_byte[s] / 2)]
-                        for s in range(0, len(self.__zw_area_state_byte))]
+            zw_vbank = [vbank[int(self.__xgzw_area_state_byte[s] / 2)]
+                        for s in range(0, len(self.__xgzw_area_state_byte))]
 
             # Partially Armed State
-            st_partial = bool(vbank[ZWAreaBank.PARTIAL])
+            st_partial = bool(vbank[XGZWAreaBank.PARTIAL])
 
             # Armed State
-            st_armed = bool(vbank[ZWAreaBank.ARMED])
+            st_armed = bool(vbank[XGZWAreaBank.ARMED])
 
             # Exit Mode
-            st_exit1 = bool(vbank[ZWAreaBank.EXIT_MODE01])
-            st_exit2 = bool(vbank[ZWAreaBank.EXIT_MODE02])
+            st_exit1 = bool(vbank[XGZWAreaBank.EXIT_MODE01])
+            st_exit2 = bool(vbank[XGZWAreaBank.EXIT_MODE02])
 
             # Chime Set
-            st_chime = bool(vbank[ZWAreaBank.CHIME])
+            st_chime = bool(vbank[XGZWAreaBank.CHIME])
 
             # Priority, the lower, the higher it is; 6 being the lowest
             priority = 6
@@ -821,10 +958,10 @@ class UltraSync(UltraSyncConfig):
                                       AreaStatus.DELAY_EXIT_1,
                                       AreaStatus.DELAY_EXIT_2):
 
-                            if vbank[ZWAreaBank.NIGHT]:
+                            if vbank[XGZWAreaBank.NIGHT]:
                                 status += ' - Night'
 
-                            elif vbank[ZWAreaBank.INSTANT]:
+                            elif vbank[XGZWAreaBank.INSTANT]:
                                 status += ' - Instant'
 
                     if AREA_STATES[v_idx] == AreaStatus.DELAY_EXIT_1:
@@ -836,23 +973,27 @@ class UltraSync(UltraSyncConfig):
                         and not (st_armed or st_partial):
                     # Update
                     status = AreaStatus.NOT_READY \
-                        if not vbank[ZWAreaBank.UNKWN_01] \
+                        if not vbank[XGZWAreaBank.UNKWN_01] \
                         else AreaStatus.NOT_READY_FORCEABLE
 
-            if vbank[ZWAreaBank.UNKWN_08] or vbank[ZWAreaBank.UNKWN_09] or \
-                    vbank[ZWAreaBank.UNKWN_10] or vbank[ZWAreaBank.UNKWN_11]:
+            if vbank[XGZWAreaBank.UNKWN_08] or \
+                    vbank[XGZWAreaBank.UNKWN_09] or \
+                    vbank[XGZWAreaBank.UNKWN_10] or \
+                    vbank[XGZWAreaBank.UNKWN_11]:
 
                 # Assign priority to 1
                 priority = 1
 
-            elif vbank[ZWAreaBank.UNKWN_33] or vbank[ZWAreaBank.UNKWN_34] or \
-                    vbank[ZWAreaBank.UNKWN_35] or vbank[ZWAreaBank.UNKWN_36] \
+            elif vbank[XGZWAreaBank.UNKWN_33] or \
+                    vbank[XGZWAreaBank.UNKWN_34] or \
+                    vbank[XGZWAreaBank.UNKWN_35] or \
+                    vbank[XGZWAreaBank.UNKWN_36] \
                     or self.__extra_area_status:
 
                 # Assign priority to 2
                 priority = 2
 
-            elif st_partial or vbank[ZWAreaBank.UNKWN_32]:
+            elif st_partial or vbank[XGZWAreaBank.UNKWN_32]:
                 # Assign priority to 3
                 priority = 3
 
@@ -860,7 +1001,7 @@ class UltraSync(UltraSyncConfig):
                 # Assign priority to 4
                 priority = 4
 
-            elif not vbank[ZWAreaBank.UNKWN_00]:
+            elif not vbank[XGZWAreaBank.UNKWN_00]:
                 # Assign priority to 5
                 priority = 5
 
@@ -1009,7 +1150,75 @@ class UltraSync(UltraSyncConfig):
         Updates our zone/sensor information based on new configuration
 
         """
-        # TODO
+
+        # The following was reverse-engineered from status.js
+        # from the function updateZone():
+        for bank, zone in self.zones.items():
+
+            # some globals
+            mask = 1 << bank % 8
+
+            # Our initial offset
+            idx = math.floor(bank / 8) * 2
+
+            # Priority, the lower, the higher it is; 5 being the lowest
+            priority = 5
+
+            # prepare ourselves a virtual states for reference
+            vbank = [int(self._zbank[s][idx:idx + 2], 16) & mask
+                     for s in range(0, 18)]
+
+            # Update our zone virtual bank
+            self._zvbank[bank] = ''.join(
+                [str(1 if b else 0) for b in vbank])
+
+            # Track whether or not element is part of things
+            can_bypass = not vbank[ZoneBank.BYPASS_DISABLED]
+
+            if vbank[ZoneBank.UNKWN_05]:
+                # red
+                priority = 1
+
+            elif vbank[ZoneBank.UNKWN_01] or vbank[ZoneBank.UNKWN_02] or \
+                    vbank[ZoneBank.UNKWN_06] or vbank[ZoneBank.UNKWN_07] or \
+                    vbank[ZoneBank.UNKWN_08] or vbank[ZoneBank.UNKWN_12]:
+                # blue
+                priority = 2
+
+            elif vbank[ZoneBank.UNKWN_03] or vbank[ZoneBank.UNKWN_04]:
+                # yellow
+                priority = 3
+
+            elif vbank[ZoneBank.UNKWN_00]:
+                # grey
+                priority = 4
+
+            bank_no = 0
+
+            status = None
+            while not status:
+                if vbank[bank_no]:
+                    status = ZONE_STATES[bank_no]
+
+                elif bank_no == 0:
+                    status = ZoneStatus.READY
+
+                # Increment our index
+                bank_no += 1
+
+            # Update our sequence
+            sequence = UltraSync.next_sequence(
+                zone.get('sequence', 0)) \
+                if zone.get('bank_state') != self._zvbank[bank] \
+                else zone.get('sequence', 0)
+
+            zone.update({
+                'priority': priority,
+                'status': status,
+                'can_bypass': can_bypass,
+                'bank_state': self._zvbank[bank],
+                'sequence': sequence,
+            })
         return True
 
     def zerowire_process_zones(self):

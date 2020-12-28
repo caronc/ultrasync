@@ -3,25 +3,25 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
-  <title>UltraSync :: Secure Network</title>
+  <title>xGen :: Secure Network</title>
   <meta name="viewport" content="initial-scale=1.0, width=device-width, maximum-scale = 1.0, minimum-scale = 1.0" />
-  <script src="/v_ZW_03.02-C/eng_us.js" charset="utf-8"></script>
-   <link href="/v_ZW_03.02-C/m.css" rel="stylesheet">
-  <script src="/v_ZW_03.02-C/master.js" charset="utf-8"></script>
-  <script src="/v_ZW_03.02-C/status.js" charset="utf-8"></script>
+  <script src="/v_XG_04.01-B/eng_eu.js" charset="utf-8"></script>
+   <link href="/v_XG_04.01-B/m.css" rel="stylesheet">
+  <script src="/v_XG_04.01-B/master.js" charset="utf-8"></script>
+  <script src="/v_XG_04.01-B/status.js" charset="utf-8"></script>
 
 </head>
 <body onload = "afterLoad();">
   <script>
   var zoneDisplay = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
 
-  var zoneNames = ["Sensor%201","Sensor%202","Sensor%203","Sensor%204","%21","%21","%21","Sensor%205","%21","Sensor%206","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21","%21"];
-  var zoneSequence = [110,0,2,73,0,38,0,0,0,10,83,36,0,0,0,0,16,0];
-  var zoneStatus = ["000000000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000","000200000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000","000000000000000000000000","E0FCFFFFFFFFFFFFFFFFFFFF"];
+  var zoneNames = ["%21","Sensor 1","Sensor 2","Sensor 3","Sensor 4","Sensor 5","Sensor 6","Sensor 7","Sensor 8","Sensor 9","Sensor 10","%21","Sensor 12","Sensor 13","Sensor 14","Sensor 15","Sensor 16"];
+  var zoneSequence = [56,21,0,200,0,33,0,0,0,0,84,29,205,0,0];
+  var zoneStatus = ["0108CE","0100CE","000000","000000","000000","000000","000000","000000","000000","000000","000000","044000","000000","000000","000000","000000","000000","000000"];
   var ismaster = 1;
   var isinstaller = 0;
 
-  function getSession(){return "61F19CA7A3AEFFF2";}
+  function getSession(){return "C97BE4C85D6244E3";}
   </script>
 
   <div id="w">
@@ -42,6 +42,7 @@
 
     buildZones();
     timeOutMS = 20000;
+    region = 2;
     setTimeout("updateAllZones()",100);
     setTimeout("newAJAXCommand('/user/seq.json', checkZoneSeq, false)", 1000);
   }

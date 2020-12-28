@@ -40,21 +40,15 @@ class NX595EVendor(object):
     XGEN = 'xgen'
 
 
-class ZWPanelFunction(object):
+class XGZWPanelFunction(object):
     """
-    Interlogix ZeroWire Function Commands
+    Interlogix and and xGen ZeroWire Function Commands
     """
 
     AREA_DISARM = 0
     AREA_STAY = 1
     AREA_CHIME_TOGGLE = 10
     AREA_AWAY = 15
-
-class XGPanelFunction(ZWPanelFunction):
-    """
-    xGen ZeroWire Function Commands
-    """
-    pass
 
 
 class CNPanelFunction(object):
@@ -68,9 +62,9 @@ class CNPanelFunction(object):
     AREA_STAY = 18
 
 
-class ZWAreaBank(object):
+class XGZWAreaBank(object):
     """
-    Defines the Bank Identifiers for Interlogix ZeroWire Area Queries
+    Defines the Bank Identifiers for Interlogix xGen ZeroWire Area Queries
 
     By identifying the bank and breaking it down, it makes the code
     MUCH easier to read for others.  It also makes the code easier to
@@ -121,21 +115,6 @@ class ZWAreaBank(object):
     UNKWN_36 = 36
     UNKWN_37 = 37
 
-
-class XGAreaBank(ZWAreaBank):
-    """
-    Defines the Bank Identifiers for xGen ZeroWire Area Queries
-
-    By identifying the bank and breaking it down, it makes the code
-    MUCH easier to read for others.  It also makes the code easier to
-    debug down the road.
-
-    This list has been purely generated through reverse engineering the
-    information available to me using the existing Ultrasync Alarm Panel
-    interface.
-
-    """
-    pass
 
 class CNAreaBank(object):
     """
