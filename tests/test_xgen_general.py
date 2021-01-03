@@ -63,6 +63,30 @@ def test_xgen_general_communication(mock_post):
         zrobj.content = f.read()
     zrobj.status_code = requests.codes.ok
 
+    # A sequence response object
+    seq_obj = mock.Mock()
+
+    # Simulate initial sequence configuration
+    with open(join(ULTRASYNC_TEST_VAR_DIR, 'seq.json'), 'rb') as f:
+        seq_obj.content = f.read()
+    seq_obj.status_code = requests.codes.ok
+
+    # A zone state response object
+    zst_obj = mock.Mock()
+
+    # Simulate initial zone fetch configuration
+    with open(join(ULTRASYNC_TEST_VAR_DIR, 'zstate.json'), 'rb') as f:
+        zst_obj.content = f.read()
+    zst_obj.status_code = requests.codes.ok
+
+    # An area state response object
+    ast_obj = mock.Mock()
+
+    # Simulate initial area status fetch configuration
+    with open(join(ULTRASYNC_TEST_VAR_DIR, 'status.json'), 'rb') as f:
+        ast_obj.content = f.read()
+    ast_obj.status_code = requests.codes.ok
+
     # Assign our response object to our mocked instance of requests
     mock_post.side_effect = (arobj, zrobj)
 
@@ -140,3 +164,44 @@ def test_xgen_general_communication(mock_post):
     assert uobj.zones[bank]['sequence'] == 1
     assert uobj.zones[bank]['status'] == 'Ready'
     assert uobj.zones[bank]['can_bypass'] is True
+
+    # Reset our mock object
+    mock_post.reset_mock()
+
+    # Update our side effects
+    mock_post.side_effect = (seq_obj, zst_obj, ast_obj)
+
+    # Perform Updated Query
+    uobj.update(max_age_sec=0)
+
+    assert mock_post.call_count == 3
+    assert mock_post.call_args_list[0][0][0] == \
+        'http://zerowire/user/seq.json'
+    assert mock_post.call_args_list[1][0][0] == \
+        'http://zerowire/user/zstate.json'
+    assert mock_post.call_args_list[2][0][0] == \
+        'http://zerowire/user/status.json'
+
+    assert isinstance(uobj.areas, dict)
+    assert len(uobj.areas) == 2
+    assert uobj.areas[0]['name'] == 'Area 1'
+    assert uobj.areas[0]['bank'] == 0
+    assert uobj.areas[1]['name'] == 'Area 2'
+    assert uobj.areas[1]['bank'] == 1
+    # Our sequence got bumped
+    assert uobj.areas[0]['sequence'] == 127
+    assert uobj.areas[0]['status'] == 'Ready'
+
+    # Reset our mock object
+    mock_post.reset_mock()
+
+    # Update our side effects
+    mock_post.side_effect = seq_obj
+
+    uobj.details(max_age_sec=0)
+
+    # Only 1 query made because seq.json file unchanged
+    assert mock_post.call_count == 1
+    assert mock_post.call_args_list[0][0][0] == \
+        'http://zerowire/user/seq.json'
+    assert uobj.areas[0]['sequence'] == 127

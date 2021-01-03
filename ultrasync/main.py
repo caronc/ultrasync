@@ -1568,6 +1568,57 @@ class UltraSync(UltraSyncConfig):
 
         return response
 
+    def _xgen_area_status_update(self, bank=0):
+        """
+        Performs a area status check for the Interlogix ZeroWire Hub
+
+        A status response could look like this:
+        {
+            "time":"5F834156",
+            "abank":0,
+            "aseq":109,
+            "bankstates":"0100000000000000000000000000000000000100\
+                          0000000000000000000000000000000000000000",
+            "entry":[0,0,0,0],
+            "exit":[0,0,0,0],
+            "system":[],
+            "zwtmp":[]
+        }
+
+        """
+
+        logger.debug(
+            'Updating Area information on bank {}'.format(bank))
+
+        if not self.session_id and not self.login():
+            return None
+
+        payload = {
+            'sess': self.session_id,
+
+            # Select the Area Bank
+            'arsel': bank,
+        }
+
+        # Perform our Query
+        response = self.__get(
+            '/user/status.json', rtype=HubResponseType.JSON, payload=payload)
+        if not response:
+            return None
+
+        # Store our Fault Status (if set)
+        self.__extra_area_status = \
+            [unquote(e).strip() for e in response.get('system', [])]
+
+        # Update our bank states
+        self.areas[bank]['bank_state'] = response['bankstates']
+
+        # Convert Hex time to Local Date Time
+        response['time'] = datetime.fromtimestamp(
+            int(response['time'], 16)).strftime('%Y-%m-%d %H:%M:%S')
+
+        return response
+
     def _comnav_area_status_update(self, bank=0):
         """
         Performs a area status check for the ComNav Hub
@@ -1646,6 +1697,48 @@ class UltraSync(UltraSyncConfig):
                              .format(self.vendor))(bank=bank)
 
     def _zerowire_zone_status_update(self, bank=0):
+        """
+        Performs a zone status check for the Interlogix Zerowire Hub
+
+        A status response could look like this:
+        {
+            "time":"5F8DE0C6",
+            "zbank":0,
+            "zseq":134,
+            "bankstates":"000000000000000000000000",
+            "system":[]
+        }
+        """
+
+        logger.debug(
+            'Updating Zone/Sensor information on bank {}'.format(bank))
+
+        if not self.session_id and not self.login():
+            return None
+
+        payload = {
+            'sess': self.session_id,
+
+            # Select the Zone Bank
+            'state': bank,
+        }
+
+        # Perform our Query
+        response = self.__get(
+            '/user/zstate.json', rtype=HubResponseType.JSON, payload=payload)
+        if not response:
+            return None
+
+        # Update our bank states
+        self._zbank[bank] = response['bankstates']
+
+        # Convert Hex time to Local Date Time
+        response['time'] = datetime.fromtimestamp(
+            int(response['time'], 16)).strftime('%Y-%m-%d %H:%M:%S')
+
+        return response
+
+    def _xgen_zone_status_update(self, bank=0):
         """
         Performs a zone status check for the Interlogix Zerowire Hub
 
@@ -1808,6 +1901,82 @@ class UltraSync(UltraSyncConfig):
             self.process_areas()
 
         return response
+
+    def _xgen_sequence(self):
+        """
+        Returns the sequences for both the zones, entries, and areas
+
+        A sequence response could look like this:
+        {
+            "time":"5F83415C",
+            "area":[50],
+            "zone":[82,1,3,242,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            "chime":[3,0,0,0],
+            "config":12345,
+            "zwdevice":67890
+        }
+
+        A sequence is a way of polling the panel to see if there is anything
+        new to report. If there are no changes, then the sequence values
+        remain unchanged.
+
+        If a sequence value is changed, the index of the 'area' is the bank
+        that was updated.... so if index 0 was updated, then Area 1 changed.
+        It is up to the user to call for an _area_status_update() with the
+        respected index that needs updating.
+
+        The same goes for if a 'zone' bank changes; a call to
+        _zone_status_update() is required to be called referencing the
+        respected bank that changed.
+
+        """
+        if not self.session_id and not self.login():
+            return None
+
+        # Perform our Query
+        response = self.__get('/user/seq.json', rtype=HubResponseType.JSON)
+        if not response:
+            return None
+
+        # Convert Hex time to Local Date Time
+        response['time'] = datetime.fromtimestamp(
+            int(response['time'], 16)).strftime('%Y-%m-%d %H:%M:%S')
+
+        perform_area_update = False
+        perform_zone_update = False
+
+        # Process Zones/Sensors first
+        for bank, sequence in enumerate(self._zsequence):
+            if sequence != response['zone'][bank]:
+                logger.debug('Zone {} sequence changed'.format(bank + 1))
+                # We need to update our status here
+                self._zsequence[bank] = response['zone'][bank]
+                self._zone_status_update(bank=bank)
+                perform_zone_update = True
+
+        # Process Area now
+        for bank, area in self.areas.items():
+            if bank >= len(response['area']):
+                # We're done
+                break
+
+            if area['sequence'] != response['area'][bank]:
+                logger.debug('Area {} sequence changed'.format(bank + 1))
+                # We need to update our status here
+                area['sequence'] = response['area'][bank]
+                self._area_status_update(bank=bank)
+                perform_area_update = True
+
+        if perform_zone_update:
+            # Update our zone sequence
+            self._zsequence = response['zone']
+
+            # Process all of our triggered zones/sensors
+            self.process_zones()
+
+        if perform_area_update:
+            # Process all of our triggered areas
+            self.process_areas()
 
     def _comnav_sequence(self):
         """
