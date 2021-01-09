@@ -1577,10 +1577,10 @@ class UltraSync(UltraSyncConfig):
             "time":"5F834156",
             "abank":0,
             "aseq":109,
-            "bankstates":"0100000000000000000000000000000000000100\
+            "bankstates":"0300000000000000000000000000000000000100\
                           0000000000000000000000000000000000000000",
-            "entry":[0,0,0,0],
-            "exit":[0,0,0,0],
+            "entry":[0,0],
+            "exit":[0,0],
             "system":[],
             "zwtmp":[]
         }
@@ -1740,7 +1740,7 @@ class UltraSync(UltraSyncConfig):
 
     def _xgen_zone_status_update(self, bank=0):
         """
-        Performs a zone status check for the Interlogix Zerowire Hub
+        Performs a zone status check for the Xgen Zerowire Hub
 
         A status response could look like this:
         {
@@ -1977,6 +1977,8 @@ class UltraSync(UltraSyncConfig):
         if perform_area_update:
             # Process all of our triggered areas
             self.process_areas()
+
+        return response
 
     def _comnav_sequence(self):
         """

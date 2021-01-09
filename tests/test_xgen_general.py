@@ -87,6 +87,22 @@ def test_xgen_general_communication(mock_post):
         ast_obj.content = f.read()
     ast_obj.status_code = requests.codes.ok
 
+    # A sequence response object
+    seq2_obj = mock.Mock()
+
+    # Simulate initial sequence configuration
+    with open(join(ULTRASYNC_TEST_VAR_DIR, 'seq.w.update.json'), 'rb') as f:
+        seq2_obj.content = f.read()
+    seq2_obj.status_code = requests.codes.ok
+
+    # A zone state response object
+    zst2_obj = mock.Mock()
+
+    # Simulate initial zone fetch configuration
+    with open(join(ULTRASYNC_TEST_VAR_DIR, 'zstate.w.update.json'), 'rb') as f:
+        zst2_obj.content = f.read()
+    zst2_obj.status_code = requests.codes.ok
+
     # Assign our response object to our mocked instance of requests
     mock_post.side_effect = (arobj, zrobj)
 
@@ -205,3 +221,19 @@ def test_xgen_general_communication(mock_post):
     assert mock_post.call_args_list[0][0][0] == \
         'http://zerowire/user/seq.json'
     assert uobj.areas[0]['sequence'] == 127
+
+    # Reset our mock object
+    mock_post.reset_mock()
+
+    # Update our side effects
+    mock_post.side_effect = (seq2_obj, zst2_obj)
+
+    # Perform Detils Query
+    details = uobj.details(max_age_sec=0)
+
+    assert details
+    assert mock_post.call_count == 2
+    assert mock_post.call_args_list[0][0][0] == \
+        'http://zerowire/user/seq.json'
+    assert mock_post.call_args_list[1][0][0] == \
+        'http://zerowire/user/zstate.json'
