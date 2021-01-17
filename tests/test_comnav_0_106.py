@@ -104,7 +104,7 @@ def test_comnav_0_106_communication(mock_post):
     assert len(uobj.areas) == 1
     assert uobj.areas[0]['name'] == 'Area 1'
     assert uobj.areas[0]['bank'] == 0
-    assert uobj.areas[0]['sequence'] == 244
+    assert uobj.areas[0]['sequence'] == 1
     assert uobj.areas[0]['status'] == 'Ready'
 
     assert isinstance(uobj.zones, dict)
@@ -158,7 +158,7 @@ def test_comnav_0_106_communication(mock_post):
     assert mock_post.call_count == 1
     assert mock_post.call_args_list[0][0][0] == \
         'http://zerowire/user/seq.xml'
-    assert uobj.areas[0]['sequence'] == 244
+    assert uobj.areas[0]['sequence'] == 1
 
     # Update our sequence file so that it reflects a change
     # This update will report an area update and 2 zones (bank 0 and 4)
@@ -206,8 +206,8 @@ def test_comnav_0_106_communication(mock_post):
     assert len(uobj.areas) == 1
     assert uobj.areas[0]['name'] == 'Area 1'
     assert uobj.areas[0]['bank'] == 0
-    # Our sequence got bumped
-    assert uobj.areas[0]['sequence'] == 245
+    # Our sequence got bumped because of a status change
+    assert uobj.areas[0]['sequence'] == 2
     assert uobj.areas[0]['status'] == 'Not Ready'
 
     # Reset our mock object
@@ -222,4 +222,4 @@ def test_comnav_0_106_communication(mock_post):
     assert mock_post.call_count == 1
     assert mock_post.call_args_list[0][0][0] == \
         'http://zerowire/user/seq.xml'
-    assert uobj.areas[0]['sequence'] == 245
+    assert uobj.areas[0]['sequence'] == 2

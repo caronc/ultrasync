@@ -116,6 +116,7 @@ class UltraSync(UltraSyncConfig):
 
         # Our areas get populated after we connect
         self.areas = {}
+        self._asequence = None
 
         # Track the time our information was polled from our panel
         self.__updated = None
@@ -640,7 +641,7 @@ class UltraSync(UltraSyncConfig):
             if not match:
                 # No match and/or bad login
                 return False
-            sequence = json.loads(match.group('sequence'))
+            self._asequence = json.loads(match.group('sequence'))
 
         else:  # self.vendor is NX595EVendor.COMNAV
             # It looks like this in the area.htm response
@@ -651,7 +652,8 @@ class UltraSync(UltraSyncConfig):
             if not match:
                 # No match and/or bad login
                 return False
-            sequence = json.loads('[{}]'.format(match.group('sequence')))
+            self._asequence = json.loads(
+                '[{}]'.format(match.group('sequence')))
 
         #
         # Get our Area Status (Bank States)
@@ -705,7 +707,8 @@ class UltraSync(UltraSyncConfig):
             area_names = json.loads('[{}]'.format(match.group('area_names')))
 
         # Ensure we've defined all of our possible sequences and areas
-        sequence.extend([0] * (UltraSync.max_sequence_count - len(sequence)))
+        self._asequence.extend(
+            [0] * (UltraSync.max_sequence_count - len(self._asequence)))
         area_names.extend(['!'] * (UltraSync.max_area_count - len(area_names)))
 
         # Store our Areas ('%21' == '!'; these are un-used areas)
@@ -713,10 +716,9 @@ class UltraSync(UltraSyncConfig):
             {x: {'name': unquote(y).strip()
                  if unquote(y).strip() else 'Area {}'.format(x + 1),
                  'bank': x,
-                 'sequence': sequence[x],
                  'bank_state': bank_states[math.floor(x / 8) * 17:
                                            (math.floor(x / 8) * 17) + 17]
-                 if self.vendor == NX595EVendor.COMNAV
+                 if self.vendor is NX595EVendor.COMNAV
                  else bank_states[0]}
 
              for x, y in enumerate(area_names)
@@ -861,6 +863,12 @@ class UltraSync(UltraSyncConfig):
                 # Assign priority to 5
                 priority = 5
 
+            # Update our sequence
+            sequence = UltraSync.next_sequence(
+                area.get('sequence', 0)) \
+                if area.get('status') != status \
+                else area.get('sequence', 0)
+
             area.update({
                 'priority': priority,
                 'states': {
@@ -871,6 +879,7 @@ class UltraSync(UltraSyncConfig):
                     'exit2': st_exit2,
                 },
                 'status': status,
+                'sequence': sequence,
             })
 
         return True
@@ -1005,6 +1014,12 @@ class UltraSync(UltraSyncConfig):
                 # Assign priority to 5
                 priority = 5
 
+            # Update our sequence
+            sequence = UltraSync.next_sequence(
+                area.get('sequence', 0)) \
+                if area.get('status') != status \
+                else area.get('sequence', 0)
+
             area.update({
                 'priority': priority,
                 'states': {
@@ -1015,6 +1030,7 @@ class UltraSync(UltraSyncConfig):
                     'exit2': st_exit2,
                 },
                 'status': status,
+                'sequence': sequence,
             })
 
         return True
@@ -1124,6 +1140,12 @@ class UltraSync(UltraSyncConfig):
                 # Assign priority to 5
                 priority = 5
 
+            # Update our sequence
+            sequence = UltraSync.next_sequence(
+                area.get('sequence', 0)) \
+                if area.get('status') != status \
+                else area.get('sequence', 0)
+
             area.update({
                 'priority': priority,
                 'states': {
@@ -1134,6 +1156,7 @@ class UltraSync(UltraSyncConfig):
                     'exit2': st_exit2,
                 },
                 'status': status,
+                'sequence': sequence,
             })
 
         return True
@@ -1475,7 +1498,10 @@ class UltraSync(UltraSyncConfig):
             # this version
             zone_naming = True if float(self.version) > 0.106 else False
 
-        # Store our Zones ('%21' == '!'; these are un-used sensors)
+        # Store our Zones:
+        # The following are unused sensors:
+        # - '%21' == '!'
+        # - '%2D' == '-'
         self.zones = \
             {x: {'name': unquote(y).strip()
                  if unquote(y).strip()
@@ -1486,7 +1512,7 @@ class UltraSync(UltraSyncConfig):
         #
         # Get our Master Status
         #
-        if self.vendor == NX595EVendor.ZEROWIRE:
+        if self.vendor is NX595EVendor.ZEROWIRE:
             # It looks like this in the zone.htm response:
             #  var master = 1; # 1 if master, 0 if not
             match = re.search(
@@ -1874,18 +1900,18 @@ class UltraSync(UltraSyncConfig):
         # Process Zones/Sensors first
         for bank, sequence in enumerate(self._zsequence):
             if sequence != response['zone'][bank]:
-                logger.debug('Zone {} sequence changed'.format(bank + 1))
+                logger.debug('Zone Bank {}:{} changed'.format(bank, sequence))
                 # We need to update our status here
                 self._zsequence[bank] = response['zone'][bank]
                 self._zone_status_update(bank=bank)
                 perform_zone_update = True
 
         # Process Area now
-        for bank, area in self.areas.items():
-            if area['sequence'] != response['area'][bank]:
-                logger.debug('Area {} sequence changed'.format(bank + 1))
+        for bank, sequence in enumerate(self._asequence):
+            if sequence != response['area'][bank]:
+                logger.debug('Area Bank {}:{} changed'.format(bank, sequence))
                 # We need to update our status here
-                area['sequence'] = response['area'][bank]
+                self._asequence[bank] = response['area'][bank]
                 self._area_status_update(bank=bank)
                 perform_area_update = True
 
@@ -1948,22 +1974,22 @@ class UltraSync(UltraSyncConfig):
         # Process Zones/Sensors first
         for bank, sequence in enumerate(self._zsequence):
             if sequence != response['zone'][bank]:
-                logger.debug('Zone {} sequence changed'.format(bank + 1))
+                logger.debug('Zone Bank {}:{} changed'.format(bank, sequence))
                 # We need to update our status here
                 self._zsequence[bank] = response['zone'][bank]
                 self._zone_status_update(bank=bank)
                 perform_zone_update = True
 
         # Process Area now
-        for bank, area in self.areas.items():
+        for bank, sequence in enumerate(self._asequence):
             if bank >= len(response['area']):
                 # We're done
                 break
 
-            if area['sequence'] != response['area'][bank]:
-                logger.debug('Area {} sequence changed'.format(bank + 1))
+            if sequence != response['area'][bank]:
+                logger.debug('Area Bank {}:{} changed'.format(bank, sequence))
                 # We need to update our status here
-                area['sequence'] = response['area'][bank]
+                self._asequence[bank] = response['area'][bank]
                 self._area_status_update(bank=bank)
                 perform_area_update = True
 
@@ -2035,18 +2061,18 @@ class UltraSync(UltraSyncConfig):
         # Process Zones/Sensors first
         for bank, sequence in enumerate(z_seq):
             if sequence != self._zsequence[bank]:
-                logger.debug('Zone {} sequence changed'.format(bank + 1))
+                logger.debug('Zone Bank {}:{} changed'.format(bank, sequence))
                 # We need to update our sequence here
                 self._zsequence[bank] = z_seq[bank]
                 self._zone_status_update(bank=bank)
                 perform_zone_update = True
 
         # Process Area now
-        for bank, area in self.areas.items():
-            if area['sequence'] != a_seq[bank]:
-                logger.debug('Area {} sequence changed'.format(bank + 1))
+        for bank, sequence in enumerate(a_seq):
+            if sequence != self._asequence[bank]:
+                logger.debug('Area Bank {}:{} changed'.format(bank, sequence))
                 # We need to update our status here
-                area['sequence'] = a_seq[bank]
+                self._asequence[bank] = a_seq[bank]
                 self._area_status_update(bank=bank)
                 perform_area_update = True
 

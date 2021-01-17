@@ -104,7 +104,7 @@ def test_zerowire_general_communication(mock_post):
     assert len(uobj.areas) == 1
     assert uobj.areas[0]['name'] == 'Area 1'
     assert uobj.areas[0]['bank'] == 0
-    assert uobj.areas[0]['sequence'] == 149
+    assert uobj.areas[0]['sequence'] == 1
     assert uobj.areas[0]['status'] == 'Ready'
 
     assert isinstance(uobj.zones, dict)
@@ -176,7 +176,7 @@ def test_zerowire_general_communication(mock_post):
     assert uobj.areas[0]['name'] == 'Area 1'
     assert uobj.areas[0]['bank'] == 0
     # Our sequence got bumped
-    assert uobj.areas[0]['sequence'] == 150
+    assert uobj.areas[0]['sequence'] == 1
     assert uobj.areas[0]['status'] == 'Ready'
 
     # Reset our mock object
@@ -191,4 +191,4 @@ def test_zerowire_general_communication(mock_post):
     assert mock_post.call_count == 1
     assert mock_post.call_args_list[0][0][0] == \
         'http://zerowire/user/seq.json'
-    assert uobj.areas[0]['sequence'] == 150
+    assert uobj.areas[0]['sequence'] == 1

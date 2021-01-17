@@ -104,7 +104,7 @@ def test_comnav_0_108_active_burglary(mock_post):
     assert len(uobj.areas) == 1
     assert uobj.areas[0]['name'] == 'Home'
     assert uobj.areas[0]['bank'] == 0
-    assert uobj.areas[0]['sequence'] == 208
+    assert uobj.areas[0]['sequence'] == 1
     assert uobj.areas[0]['status'] == 'Burglar Alarm'
 
     assert isinstance(uobj.zones, dict)

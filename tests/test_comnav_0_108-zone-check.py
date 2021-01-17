@@ -104,15 +104,88 @@ def test_comnav_0_108_zone_filter(mock_post):
     assert len(uobj.areas) == 2
     assert uobj.areas[0]['name'] == 'AREA 1'
     assert uobj.areas[0]['bank'] == 0
-    assert uobj.areas[0]['sequence'] == 70
+    assert uobj.areas[0]['sequence'] == 1
     assert uobj.areas[0]['status'] == 'Ready'
 
     assert uobj.areas[1]['name'] == 'AREA 2'
     assert uobj.areas[1]['bank'] == 1
-    assert uobj.areas[1]['sequence'] == 0
+    assert uobj.areas[1]['sequence'] == 1
     assert uobj.areas[1]['status'] == 'Ready'
 
     assert isinstance(uobj.zones, dict)
     # our total zones defined (we want to be sure we don't
     # include the '%2D' or '-')
     assert len(uobj.zones) == 17
+
+    # A call to login.cgi (which fetches area.html) and then zones.htm
+    assert mock_post.call_count == 2
+    assert mock_post.call_args_list[0][0][0] == \
+        'http://zerowire/login.cgi'
+    assert mock_post.call_args_list[1][0][0] == \
+        'http://zerowire/user/zones.htm'
+
+    # Reset our mock object
+    mock_post.reset_mock()
+
+    # Update our side effects
+    mock_post.side_effect = (seq_obj, ast_obj, zst_obj)
+
+    # Perform Updated Query
+    uobj.update(max_age_sec=0)
+
+    # Only 1 query made because seq.xml file unchanged
+    assert mock_post.call_count == 1
+    assert mock_post.call_args_list[0][0][0] == \
+        'http://zerowire/user/seq.xml'
+    assert uobj.areas[0]['sequence'] == 1
+
+    # Update our sequence file so that it reflects a change
+    with open(join(ULTRASYNC_TEST_VAR_DIR, 'seq.w.update.xml'), 'rb') as f:
+        seq_obj.content = f.read()
+
+    # Reset our mock object
+    mock_post.reset_mock()
+
+    # Update our side effects
+    mock_post.side_effect = (seq_obj, ast_obj, zst_obj)
+
+    # Perform Updated Query
+    uobj.update(max_age_sec=0)
+
+    assert mock_post.call_count == 3
+    assert mock_post.call_args_list[0][0][0] == \
+        'http://zerowire/user/seq.xml'
+    assert mock_post.call_args_list[1][0][0] == \
+        'http://zerowire/user/zstate.xml'
+    assert mock_post.call_args_list[2][0][0] == \
+        'http://zerowire/user/status.xml'
+
+    assert isinstance(uobj.areas, dict)
+    assert len(uobj.areas) == 2
+    assert uobj.areas[0]['name'] == 'AREA 1'
+    assert uobj.areas[0]['bank'] == 0
+    # Our sequence does not change because our status did not
+    # change from one state to another
+    assert uobj.areas[0]['sequence'] == 1
+    assert uobj.areas[0]['status'] == 'Ready'
+
+    assert uobj.areas[1]['name'] == 'AREA 2'
+    assert uobj.areas[1]['bank'] == 1
+    # Our sequence does not change because our status did not
+    # change from one state to another
+    assert uobj.areas[1]['sequence'] == 1
+    assert uobj.areas[1]['status'] == 'Ready'
+
+    # Reset our mock object
+    mock_post.reset_mock()
+
+    # Update our side effects
+    mock_post.side_effect = seq_obj
+
+    uobj.details(max_age_sec=0)
+
+    # Only 1 query made because seq.xml file unchanged
+    assert mock_post.call_count == 1
+    assert mock_post.call_args_list[0][0][0] == \
+        'http://zerowire/user/seq.xml'
+    assert uobj.areas[0]['sequence'] == 1
