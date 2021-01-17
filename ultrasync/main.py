@@ -1481,7 +1481,7 @@ class UltraSync(UltraSyncConfig):
                  if unquote(y).strip()
                  else 'Sensor {}'.format(x + 1), 'bank': x}
              for x, y in enumerate(zone_names)
-             if not zone_naming or (y != '%21' and y != '!' and y != '')}
+             if not zone_naming or (y not in ('%21', '!', '%2D', '-', ''))}
 
         #
         # Get our Master Status

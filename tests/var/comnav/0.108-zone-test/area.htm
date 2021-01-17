@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="UTF-8">
+	<title>NX-595E :: Secure Network</title>
+	<meta name="viewport" content="initial-scale=1.0, width=device-width, maximum-scale = 1.0, minimum-scale = 1.0" />
+	<link href="/v_CN_0.108-O/m.css" rel="stylesheet">
+	<script src="/v_CN_0.108-O/master.js" charset="utf-8"></script>
+	<script src="/v_CN_0.108-O/status.js" charset="utf-8"></script>
+  	<script src="/v_CN_0.108-O/lang_it.js" charset="utf-8"></script>
+
+</head>
+<body onload = "afterLoad();">
+	<script>
+	var areaDisplay = new Array(0);
+
+
+	var areaNames = new Array("AREA%201","AREA%202","%21","%21","%21","%21","%21");
+	var areaSequence = new Array(70);
+	var areaStatus = new Array(0,0,3,0,0,0,0,0,0,0,0,0,0,0,0,2,0);
+	var sysStatus;
+	var areaCount = 0;
+    var allAway = false;
+    var allStay = false;
+    var allChime = false;
+    var allpriority = 6;
+    var allSequence = 0;
+
+	function getSession(){return "7E3064A936B3CA91";}
+	</script>
+
+	<div id="w">
+		<!-- buildBanner() inserts banner html here -->
+		<!-- buildMenu() inserts status menu here -->
+		<!-- buildAreas() inserts areas html here -->
+	</div>
+
+	<script>
+	sysStatus = new Array();
+
+	function afterLoad()
+	{
+	    convertNames(areaNames);
+ 		hillsBuild = false;
+ 		variant = 2;
+		buildBanner("NX-595E");
+        buildMenu(1,0,0,0,1,1);
+		buildAreas();
+
+		for(var i = (17*12); i < areaStatus.length;i++)
+			sysStatus.push(areaStatus[i]);
+		setTimeout("updateAllAreas()",1500);
+		areaSequence[0] += 100;
+		setTimeout("pollSequence()", 100);
+	}
+	    // function called by iPhone to return "{active menu index, authorised menu list}"
+    // Note: the iPhone will display in the order presented here. see master.jss
+    function getMenu()
+    {
+    	if(hillsBuild)
+      		return "[0, [1,1,1,0,0,0,0,0,0,0,0,0,0]]";
+       	else
+      		if(variant == 1)
+      			return "[0, [1,1,1,0,0,0,0,0,0,0,0,0,0]]";
+     	else
+       		return "[0, [1,1,1,0,0,0,0,0,0,0,0,0,0]]";
+    }
+
+	</script>
+</body>
+</html>
