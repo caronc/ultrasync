@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>xGen :: Secure Network</title>
+  <meta name="viewport" content="initial-scale=1.0, width=device-width, maximum-scale = 1.0, minimum-scale = 1.0" />
+  <script src="/v_XG_04.01-B/eng_eu.js" charset="utf-8"></script>
+   <link href="/v_XG_04.01-B/m.css" rel="stylesheet">
+  <script src="/v_XG_04.01-B/master.js" charset="utf-8"></script>
+  <script src="/v_XG_04.01-B/status.js" charset="utf-8"></script>
+
+</head>
+<body onload = "afterLoad();">
+  <script>
+  var zoneDisplay = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+
+  var zoneNames = ["%21","Sensor 1","Sensor 2","Sensor 3","Sensor 4","Sensor 5","Sensor 6","Sensor 7","Sensor 8","Sensor 9","Sensor 10","%21","Sensor 12","Sensor 13","Sensor 14","Sensor 15","Sensor 16"];
+  var zoneSequence = [56,21,0,200,0,33,0,0,0,0,84,29,205,0,0];
+  var zoneStatus = ["0108CE","0100CE","000000","000000","000000","000000","000000","000000","000000","000000","000000","044000","000000","000000","000000","000000","000000","000000"];
+  var ismaster = 1;
+  var isinstaller = 0;
+
+  function getSession(){return "C97BE4C85D6244E3";}
+  </script>
+
+  <div id="w">
+    <!-- buildBanner() inserts banner html here -->
+    <!-- buildMenu() inserts status menu here -->
+    <!-- buildZones() inserts zones html here -->
+  </div>
+
+  <script>
+  function afterLoad()
+  {
+  	convertNames(zoneNames);
+    buildBanner(defaultNames[22]);
+    buildMenu(2,0,1,1,1,1,1);
+ 	try{
+ 		zoneStatus = JSON.parse(zoneStatus);
+ 	}catch(ex){}
+
+    buildZones();
+    timeOutMS = 20000;
+    region = 2;
+    setTimeout("updateAllZones()",100);
+    setTimeout("newAJAXCommand('/user/seq.json', checkZoneSeq, false)", 1000);
+  }
+
+  // function called by iPhone to return "{active menu index, authorised menu list}"
+  // Note: the iPhone will display in the order presented here. see master.jss
+  function getMenu()
+  {
+    return "[1, [1,1,1,1,1,1,1,0]]";
+  }
+  </script>
+</body>
+</html>

@@ -36,10 +36,13 @@ class NX595EVendor(object):
     # ComNav UltraSync
     COMNAV = 'comnav'
 
+    # xGen UltraSync
+    XGEN = 'xgen'
 
-class ZWPanelFunction(object):
+
+class XGZWPanelFunction(object):
     """
-    Interlogix ZeroWire Function Commands
+    Interlogix and and xGen ZeroWire Function Commands
     """
 
     AREA_DISARM = 0
@@ -59,9 +62,9 @@ class CNPanelFunction(object):
     AREA_STAY = 18
 
 
-class ZWAreaBank(object):
+class XGZWAreaBank(object):
     """
-    Defines the Bank Identifiers for Interlogix ZeroWire Area Queries
+    Defines the Bank Identifiers for Interlogix xGen ZeroWire Area Queries
 
     By identifying the bank and breaking it down, it makes the code
     MUCH easier to read for others.  It also makes the code easier to
@@ -111,8 +114,6 @@ class ZWAreaBank(object):
     UNKWN_35 = 35
     UNKWN_36 = 36
     UNKWN_37 = 37
-    UNKWN_38 = 38
-    UNKWN_39 = 39
 
 
 class CNAreaBank(object):

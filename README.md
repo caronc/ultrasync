@@ -1,6 +1,6 @@
 # NX-595E UltraSync Hub
 
-Compatible with both NX-595E [Hills](https://www.hills.com.au/) ComNav and [Interlogix](https://www.interlogix.com/) [ZeroWire](https://www.interlogix.com/intrusion/product/ultrasync-selfcontained-hub) UltraSync solutions.
+Compatible with both NX-595E [Hills](https://www.hills.com.au/) ComNav, xGen, and [Interlogix](https://www.interlogix.com/) [ZeroWire](https://www.interlogix.com/intrusion/product/ultrasync-selfcontained-hub) UltraSync solutions.
 
 ![ZeroWire Hub Image](https://raw.githubusercontent.com/caronc/ultrasync/master/static/zerowire_hub.jpeg)
 

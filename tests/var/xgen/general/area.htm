@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<title>xGen :: Secure Network</title>
+	<meta name="viewport" content="initial-scale=1.0, width=device-width, maximum-scale = 1.0, minimum-scale = 1.0" />
+    <script src="/v_XG_04.01-B/eng_eu.js" charset="utf-8"></script>
+	<link href="/v_XG_04.01-B/m.css" rel="stylesheet">
+	<script src="/v_XG_04.01-B/master.js" charset="utf-8"></script>
+	<script src="/v_XG_04.01-B/status.js" charset="utf-8"></script>
+
+</head>
+<body onload = "afterLoad();">
+	<script>
+	var areaDisplay = [];
+
+	var areaNames = ["Area 1","Area 2"];
+	var areaSequence = [126];
+	var areaStatus = ["03000000000000000000000000000000000000000000000000000000000000000000000000000000"];
+	var entryTime = [0,0];
+	var exitTime = [0,0];
+	var sysStatus = [];
+	var areaCount = 0;
+    var allAway = false;
+    var allStay = false;
+    var allChime = false;
+    var allpriority = 6;
+    var allSequence = 0;
+    var tampers = [];
+
+	function getSession(){return "C97BE4C85D6244E3";}
+	</script>
+
+	<div id="w">
+		<!-- buildBanner() inserts banner html here -->
+		<!-- buildMenu() inserts status menu here -->
+		<!-- buildAreas() inserts areas html here -->
+	</div>
+
+	<script>
+			sysStatus = [];
+
+	function afterLoad()
+	{
+		convertNames(areaNames);
+		buildBanner(defaultNames[22]);
+        buildMenu(1,0,1,1,1,1,1);
+		buildAreas();
+		setTimeout("updateAllAreas()",1500);
+		areaSequence[0] += 100;
+		setTimeout("pollSequence()", 100);
+        timeOutMS = 20000;
+        region = 2;
+
+
+	}
+
+	// function called by iPhone to return "{active menu index, authorised menu list}"
+	// Note: the iPhone will display in the order presented here. see master.jss
+	function getMenu()
+	{
+		return "[0,[1,1,1,1,1,1,1,0]]";
+	}
+	</script>
+</body>
+</html>

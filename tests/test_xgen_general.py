@@ -37,13 +37,13 @@ logging.disable(logging.CRITICAL)
 
 # Reference Directory
 ULTRASYNC_TEST_VAR_DIR = \
-    join(dirname(__file__), 'var', NX595EVendor.ZEROWIRE, 'general')
+    join(dirname(__file__), 'var', NX595EVendor.XGEN, 'general')
 
 
 @mock.patch('requests.Session.post')
-def test_zerowire_general_communication(mock_post):
+def test_xgen_general_communication(mock_post):
     """
-    Test Interlogix ZeroWire Hub Communication
+    Test xGen ZeroWire Hub Communication
 
     """
 
@@ -87,6 +87,22 @@ def test_zerowire_general_communication(mock_post):
         ast_obj.content = f.read()
     ast_obj.status_code = requests.codes.ok
 
+    # A sequence response object
+    seq2_obj = mock.Mock()
+
+    # Simulate initial sequence configuration
+    with open(join(ULTRASYNC_TEST_VAR_DIR, 'seq.w.update.json'), 'rb') as f:
+        seq2_obj.content = f.read()
+    seq2_obj.status_code = requests.codes.ok
+
+    # A zone state response object
+    zst2_obj = mock.Mock()
+
+    # Simulate initial zone fetch configuration
+    with open(join(ULTRASYNC_TEST_VAR_DIR, 'zstate.w.update.json'), 'rb') as f:
+        zst2_obj.content = f.read()
+    zst2_obj.status_code = requests.codes.ok
+
     # Assign our response object to our mocked instance of requests
     mock_post.side_effect = (arobj, zrobj)
 
@@ -95,60 +111,71 @@ def test_zerowire_general_communication(mock_post):
     # Perform a login which under the hood queries both area.htm and zones.htm
     # (in that order)
     assert uobj.login()
-    assert uobj.vendor is NX595EVendor.ZEROWIRE
-    assert uobj.version == '3.02'
-    assert uobj.release == 'C'
+    assert uobj.vendor is NX595EVendor.XGEN
+    assert uobj.version == '4.01'
+    assert uobj.release == 'B'
 
     assert isinstance(uobj.areas, dict)
     # we only have 1 area defined in our test file
-    assert len(uobj.areas) == 1
+    assert len(uobj.areas) == 2
     assert uobj.areas[0]['name'] == 'Area 1'
     assert uobj.areas[0]['bank'] == 0
-    assert uobj.areas[0]['sequence'] == 149
+    assert uobj.areas[0]['sequence'] == 126
     assert uobj.areas[0]['status'] == 'Ready'
+
+    assert uobj.areas[1]['name'] == 'Area 2'
+    assert uobj.areas[1]['bank'] == 1
+    assert uobj.areas[1]['sequence'] == 0
+    assert uobj.areas[1]['status'] == 'Ready'
 
     assert isinstance(uobj.zones, dict)
     # we have 8 zones defined in our test file spread across
     # different banks:
-    assert len(uobj.zones) == 6
-    bank = 0
+    assert len(uobj.zones) == 15
+    bank = 1
     assert uobj.zones[bank]['name'] == 'Sensor 1'
     assert uobj.zones[bank]['bank'] == bank
     assert uobj.zones[bank]['sequence'] == 1
     assert uobj.zones[bank]['status'] == 'Ready'
     assert uobj.zones[bank]['can_bypass'] is True
 
-    bank = 1
+    bank = 2
     assert uobj.zones[bank]['name'] == 'Sensor 2'
     assert uobj.zones[bank]['bank'] == bank
     assert uobj.zones[bank]['sequence'] == 1
     assert uobj.zones[bank]['status'] == 'Ready'
     assert uobj.zones[bank]['can_bypass'] is True
 
-    bank = 2
+    bank = 3
     assert uobj.zones[bank]['name'] == 'Sensor 3'
     assert uobj.zones[bank]['bank'] == bank
     assert uobj.zones[bank]['sequence'] == 1
     assert uobj.zones[bank]['status'] == 'Ready'
     assert uobj.zones[bank]['can_bypass'] is True
 
-    bank = 3
+    bank = 4
     assert uobj.zones[bank]['name'] == 'Sensor 4'
     assert uobj.zones[bank]['bank'] == bank
     assert uobj.zones[bank]['sequence'] == 1
     assert uobj.zones[bank]['status'] == 'Ready'
     assert uobj.zones[bank]['can_bypass'] is True
 
-    # Our Sensor 5 can not be bypassed
-    bank = 7
-    assert uobj.zones[bank]['name'] == 'Sensor 5'
+    bank = 10
+    assert uobj.zones[bank]['name'] == 'Sensor 10'
     assert uobj.zones[bank]['bank'] == bank
     assert uobj.zones[bank]['sequence'] == 1
     assert uobj.zones[bank]['status'] == 'Ready'
-    assert uobj.zones[bank]['can_bypass'] is False
+    assert uobj.zones[bank]['can_bypass'] is True
 
-    bank = 9
-    assert uobj.zones[bank]['name'] == 'Sensor 6'
+    bank = 13
+    assert uobj.zones[bank]['name'] == 'Sensor 13'
+    assert uobj.zones[bank]['bank'] == bank
+    assert uobj.zones[bank]['sequence'] == 1
+    assert uobj.zones[bank]['status'] == 'Ready'
+    assert uobj.zones[bank]['can_bypass'] is True
+
+    bank = 15
+    assert uobj.zones[bank]['name'] == 'Sensor 15'
     assert uobj.zones[bank]['bank'] == bank
     assert uobj.zones[bank]['sequence'] == 1
     assert uobj.zones[bank]['status'] == 'Ready'
@@ -172,11 +199,13 @@ def test_zerowire_general_communication(mock_post):
         'http://zerowire/user/status.json'
 
     assert isinstance(uobj.areas, dict)
-    assert len(uobj.areas) == 1
+    assert len(uobj.areas) == 2
     assert uobj.areas[0]['name'] == 'Area 1'
     assert uobj.areas[0]['bank'] == 0
+    assert uobj.areas[1]['name'] == 'Area 2'
+    assert uobj.areas[1]['bank'] == 1
     # Our sequence got bumped
-    assert uobj.areas[0]['sequence'] == 150
+    assert uobj.areas[0]['sequence'] == 127
     assert uobj.areas[0]['status'] == 'Ready'
 
     # Reset our mock object
@@ -191,4 +220,20 @@ def test_zerowire_general_communication(mock_post):
     assert mock_post.call_count == 1
     assert mock_post.call_args_list[0][0][0] == \
         'http://zerowire/user/seq.json'
-    assert uobj.areas[0]['sequence'] == 150
+    assert uobj.areas[0]['sequence'] == 127
+
+    # Reset our mock object
+    mock_post.reset_mock()
+
+    # Update our side effects
+    mock_post.side_effect = (seq2_obj, zst2_obj)
+
+    # Perform Detils Query
+    details = uobj.details(max_age_sec=0)
+
+    assert details
+    assert mock_post.call_count == 2
+    assert mock_post.call_args_list[0][0][0] == \
+        'http://zerowire/user/seq.json'
+    assert mock_post.call_args_list[1][0][0] == \
+        'http://zerowire/user/zstate.json'
