@@ -170,8 +170,9 @@ class UltraSync(UltraSyncConfig):
         #                     ^
         #                     |
         match = re.search(
-            r'script src="(?P<path>/v_(?P<vendor>[^_]+)'
-            r'_0?(?P<version>[0-9]\.[0-9.]*)(-(?P<release>[^/]+))?).*',
+            r'script src="(?P<path>/(v_(?P<vendor>[^_]+)'
+            r'_0?(?P<version>[0-9]\.[0-9.]*)(-(?P<release>[^/]+))?'
+            r'|(?P<xgen8>xGen __ Secure Network_files))).*',
             response, re.M)
         if not match:
             # No match and/or bad login
@@ -180,23 +181,31 @@ class UltraSync(UltraSyncConfig):
         # Store our path
         self.__panel_url_path = match.group('path')
 
+        if match.group('xgen8'):
+            self.vendor = NX595EVendor.XGEN
+            self.version = '8.000'
+            self.release = '0'
+
         # Determine our Vendor and Version information
-        if match.group('vendor') == 'ZW':
+        elif match.group('vendor') == 'ZW':
             self.vendor = NX595EVendor.ZEROWIRE
+            self.version = match.group('version')
+            self.release = match.group('release')
 
         elif match.group('vendor') == 'CN':
             self.vendor = NX595EVendor.COMNAV
+            self.version = match.group('version')
+            self.release = match.group('release')
 
         elif match.group('vendor') == 'XG':
             self.vendor = NX595EVendor.XGEN
+            self.version = match.group('version')
+            self.release = match.group('release')
 
         else:
             logger.error(
                 'Unsupported vendor {}'.format(match.group('vendor')))
             return False
-
-        self.version = match.group('version')
-        self.release = match.group('release')
 
         logger.debug('Detected {} NX-595E, Web Interface v{}-{}'.format(
             self.vendor,
