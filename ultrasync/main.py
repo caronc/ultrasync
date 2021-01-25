@@ -169,10 +169,15 @@ class UltraSync(UltraSyncConfig):
         #   script src="/v_ZW_03.02-C/status.js"
         #                     ^
         #                     |
+
+        # However, XGen8 use:
+        #   - /javascript
+        #   - /xGen __ Secure Network_file
+        #
         match = re.search(
             r'script src="(?P<path>/(v_(?P<vendor>[^_]+)'
             r'_0?(?P<version>[0-9]\.[0-9.]*)(-(?P<release>[^/]+))?'
-            r'|(?P<xgen8>xGen __ Secure Network_files))).*',
+            r'|(?P<xgen8>(xGen __ Secure Network_files|javascript)))).*',
             response, re.M)
         if not match:
             # No match and/or bad login
