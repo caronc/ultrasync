@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>NX-595E :: Secure Network</title>
+  <meta name="viewport" content="initial-scale=1.0, width=device-width, maximum-scale = 1.0, minimum-scale = 1.0" />
+  <link href="/v_CN_0.108-O/m.css" rel="stylesheet">
+  <script src="/v_CN_0.108-O/master.js" charset="utf-8"></script>
+  <script src="/v_CN_0.108-O/status.js" charset="utf-8"></script>
+  <script src="/v_CN_0.108-O/lang_it.js" charset="utf-8"></script>
+
+</head>
+<body onload = "afterLoad();">
+  <script>
+  var zoneDisplay = new Array(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+
+  var zoneNames = new Array("ZONE01","%2D","ZONE03","ZONE04","ZONE05","ZONE06","ZONE07","ZONE08","ZONE09","ZONE10","ZONE11","ZONE12","ZONE13","ZONE14","ZONE15","ZONE16","ZONE17","%2D","%2D","%2D","%2D","%2D","%2D","ZONE24","%2D","%2D","%2D","%2D","%2D","%2D","%2D","%2D","","","","","","","","","","","","","","","","");
+  var zoneSequence = new Array(201,0,0,225,2,16,0,0,1,0,0,8,0,0);
+  var zoneStatus = new Array(new Array(0,0,0,0),new Array(0,0,0,0),new Array(0,0,0,0),new Array(0,0,0,0),new Array(0,0,0,0),new Array(0,0,0,0),new Array(0,0,0,0),new Array(0,0,0,0),new Array(10240,0,0,0),new Array(0,0,0,0),new Array(0,0,0,0),new Array(0,0,0,0),new Array(0,0,0,0),new Array(0,0,0,0));
+
+  function getSession(){return "7E3064A936B3CA91";}
+  </script>
+
+  <div id="w">
+    <!-- buildBanner() inserts banner html here -->
+    <!-- buildMenu() inserts status menu here -->
+    <!-- buildZones() inserts zones html here -->
+  </div>
+
+  <script>
+  function afterLoad()
+  {
+  	convertNames(zoneNames);
+    buildBanner("NX-595E");
+    variant = 2;
+    buildMenu(2,0,0,0,1,1);
+    buildZones();
+    setTimeout("updateAllZones()",100);
+    setTimeout("newAJAXCommand('/user/seq.xml', checkZoneSeq, false)", 1000);
+  }
+  	    // function called by iPhone to return "{active menu index, authorised menu list}"
+    // Note: the iPhone will display in the order presented here. see master.jss
+    function getMenu()
+    {
+    	if(hillsBuild)
+      		return "[1, [1,1,1,0,0,0,0,0,0,0,0,0,0]]";
+      	else
+      		if(variant == 1)
+      			return "[1, [1,1,1,0,0,0,0,0,0,0,0,0,0]]";
+      	else
+       		return "[1, [1,1,1,0,0,0,0,0,0,0,0,0,0]]";
+     }
+
+
+  </script>
+</body>
+</html>

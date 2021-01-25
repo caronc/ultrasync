@@ -80,7 +80,7 @@ def test_zerowire_armed_communication(mock_post):
     assert len(uobj.areas) == 1
     assert uobj.areas[0]['name'] == 'Area 1'
     assert uobj.areas[0]['bank'] == 0
-    assert uobj.areas[0]['sequence'] == 203
+    assert uobj.areas[0]['sequence'] == 1
     assert uobj.areas[0]['status'] == 'Exit Delay 1'
 
     assert isinstance(uobj.zones, dict)

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2020 Chris Caron <lead2gold@gmail.com>
+# Copyright (C) 2021 Chris Caron <lead2gold@gmail.com>
 # All rights reserved.
 #
 # This code is licensed under the MIT License.
@@ -37,13 +37,13 @@ logging.disable(logging.CRITICAL)
 
 # Reference Directory
 ULTRASYNC_TEST_VAR_DIR = \
-    join(dirname(__file__), 'var', NX595EVendor.ZEROWIRE, 'general')
+    join(dirname(__file__), 'var', NX595EVendor.COMNAV, '0.108-zone-test')
 
 
 @mock.patch('requests.Session.post')
-def test_zerowire_general_communication(mock_post):
+def test_comnav_0_108_zone_filter(mock_post):
     """
-    Test Interlogix ZeroWire Hub Communication
+    Test ComNav v0.108 Zone Filtering
 
     """
 
@@ -58,7 +58,7 @@ def test_zerowire_general_communication(mock_post):
     # A zone response object
     zrobj = mock.Mock()
 
-    # Simulate a valid login return
+    # Simulate initial zone configuration
     with open(join(ULTRASYNC_TEST_VAR_DIR, 'zones.htm'), 'rb') as f:
         zrobj.content = f.read()
     zrobj.status_code = requests.codes.ok
@@ -67,7 +67,7 @@ def test_zerowire_general_communication(mock_post):
     seq_obj = mock.Mock()
 
     # Simulate initial sequence configuration
-    with open(join(ULTRASYNC_TEST_VAR_DIR, 'seq.json'), 'rb') as f:
+    with open(join(ULTRASYNC_TEST_VAR_DIR, 'seq.xml'), 'rb') as f:
         seq_obj.content = f.read()
     seq_obj.status_code = requests.codes.ok
 
@@ -75,7 +75,7 @@ def test_zerowire_general_communication(mock_post):
     zst_obj = mock.Mock()
 
     # Simulate initial zone fetch configuration
-    with open(join(ULTRASYNC_TEST_VAR_DIR, 'zstate.json'), 'rb') as f:
+    with open(join(ULTRASYNC_TEST_VAR_DIR, 'zstate.xml'), 'rb') as f:
         zst_obj.content = f.read()
     zst_obj.status_code = requests.codes.ok
 
@@ -83,7 +83,7 @@ def test_zerowire_general_communication(mock_post):
     ast_obj = mock.Mock()
 
     # Simulate initial area status fetch configuration
-    with open(join(ULTRASYNC_TEST_VAR_DIR, 'status.json'), 'rb') as f:
+    with open(join(ULTRASYNC_TEST_VAR_DIR, 'status.xml'), 'rb') as f:
         ast_obj.content = f.read()
     ast_obj.status_code = requests.codes.ok
 
@@ -95,89 +95,86 @@ def test_zerowire_general_communication(mock_post):
     # Perform a login which under the hood queries both area.htm and zones.htm
     # (in that order)
     assert uobj.login()
-    assert uobj.vendor is NX595EVendor.ZEROWIRE
-    assert uobj.version == '3.02'
-    assert uobj.release == 'C'
+    assert uobj.vendor is NX595EVendor.COMNAV
+    assert uobj.version == '0.108'
+    assert uobj.release == 'O'
 
     assert isinstance(uobj.areas, dict)
-    # we only have 1 area defined in our test file
-    assert len(uobj.areas) == 1
-    assert uobj.areas[0]['name'] == 'Area 1'
+    # 2 Areas defined
+    assert len(uobj.areas) == 2
+    assert uobj.areas[0]['name'] == 'AREA 1'
     assert uobj.areas[0]['bank'] == 0
     assert uobj.areas[0]['sequence'] == 1
     assert uobj.areas[0]['status'] == 'Ready'
 
+    assert uobj.areas[1]['name'] == 'AREA 2'
+    assert uobj.areas[1]['bank'] == 1
+    assert uobj.areas[1]['sequence'] == 1
+    assert uobj.areas[1]['status'] == 'Ready'
+
     assert isinstance(uobj.zones, dict)
-    # we have 8 zones defined in our test file spread across
-    # different banks:
-    assert len(uobj.zones) == 6
-    bank = 0
-    assert uobj.zones[bank]['name'] == 'Sensor 1'
-    assert uobj.zones[bank]['bank'] == bank
-    assert uobj.zones[bank]['sequence'] == 1
-    assert uobj.zones[bank]['status'] == 'Ready'
-    assert uobj.zones[bank]['can_bypass'] is True
+    # our total zones defined (we want to be sure we don't
+    # include the '%2D' or '-')
+    assert len(uobj.zones) == 17
 
-    bank = 1
-    assert uobj.zones[bank]['name'] == 'Sensor 2'
-    assert uobj.zones[bank]['bank'] == bank
-    assert uobj.zones[bank]['sequence'] == 1
-    assert uobj.zones[bank]['status'] == 'Ready'
-    assert uobj.zones[bank]['can_bypass'] is True
-
-    bank = 2
-    assert uobj.zones[bank]['name'] == 'Sensor 3'
-    assert uobj.zones[bank]['bank'] == bank
-    assert uobj.zones[bank]['sequence'] == 1
-    assert uobj.zones[bank]['status'] == 'Ready'
-    assert uobj.zones[bank]['can_bypass'] is True
-
-    bank = 3
-    assert uobj.zones[bank]['name'] == 'Sensor 4'
-    assert uobj.zones[bank]['bank'] == bank
-    assert uobj.zones[bank]['sequence'] == 1
-    assert uobj.zones[bank]['status'] == 'Ready'
-    assert uobj.zones[bank]['can_bypass'] is True
-
-    # Our Sensor 5 can not be bypassed
-    bank = 7
-    assert uobj.zones[bank]['name'] == 'Sensor 5'
-    assert uobj.zones[bank]['bank'] == bank
-    assert uobj.zones[bank]['sequence'] == 1
-    assert uobj.zones[bank]['status'] == 'Ready'
-    assert uobj.zones[bank]['can_bypass'] is False
-
-    bank = 9
-    assert uobj.zones[bank]['name'] == 'Sensor 6'
-    assert uobj.zones[bank]['bank'] == bank
-    assert uobj.zones[bank]['sequence'] == 1
-    assert uobj.zones[bank]['status'] == 'Ready'
-    assert uobj.zones[bank]['can_bypass'] is True
+    # A call to login.cgi (which fetches area.html) and then zones.htm
+    assert mock_post.call_count == 2
+    assert mock_post.call_args_list[0][0][0] == \
+        'http://zerowire/login.cgi'
+    assert mock_post.call_args_list[1][0][0] == \
+        'http://zerowire/user/zones.htm'
 
     # Reset our mock object
     mock_post.reset_mock()
 
     # Update our side effects
-    mock_post.side_effect = (seq_obj, zst_obj, ast_obj)
+    mock_post.side_effect = (seq_obj, ast_obj, zst_obj)
+
+    # Perform Updated Query
+    uobj.update(max_age_sec=0)
+
+    # Only 1 query made because seq.xml file unchanged
+    assert mock_post.call_count == 1
+    assert mock_post.call_args_list[0][0][0] == \
+        'http://zerowire/user/seq.xml'
+    assert uobj.areas[0]['sequence'] == 1
+
+    # Update our sequence file so that it reflects a change
+    with open(join(ULTRASYNC_TEST_VAR_DIR, 'seq.w.update.xml'), 'rb') as f:
+        seq_obj.content = f.read()
+
+    # Reset our mock object
+    mock_post.reset_mock()
+
+    # Update our side effects
+    mock_post.side_effect = (seq_obj, ast_obj, zst_obj)
 
     # Perform Updated Query
     uobj.update(max_age_sec=0)
 
     assert mock_post.call_count == 3
     assert mock_post.call_args_list[0][0][0] == \
-        'http://zerowire/user/seq.json'
+        'http://zerowire/user/seq.xml'
     assert mock_post.call_args_list[1][0][0] == \
-        'http://zerowire/user/zstate.json'
+        'http://zerowire/user/zstate.xml'
     assert mock_post.call_args_list[2][0][0] == \
-        'http://zerowire/user/status.json'
+        'http://zerowire/user/status.xml'
 
     assert isinstance(uobj.areas, dict)
-    assert len(uobj.areas) == 1
-    assert uobj.areas[0]['name'] == 'Area 1'
+    assert len(uobj.areas) == 2
+    assert uobj.areas[0]['name'] == 'AREA 1'
     assert uobj.areas[0]['bank'] == 0
-    # Our sequence got bumped
+    # Our sequence does not change because our status did not
+    # change from one state to another
     assert uobj.areas[0]['sequence'] == 1
     assert uobj.areas[0]['status'] == 'Ready'
+
+    assert uobj.areas[1]['name'] == 'AREA 2'
+    assert uobj.areas[1]['bank'] == 1
+    # Our sequence does not change because our status did not
+    # change from one state to another
+    assert uobj.areas[1]['sequence'] == 1
+    assert uobj.areas[1]['status'] == 'Ready'
 
     # Reset our mock object
     mock_post.reset_mock()
@@ -187,8 +184,8 @@ def test_zerowire_general_communication(mock_post):
 
     uobj.details(max_age_sec=0)
 
-    # Only 1 query made because seq.json file unchanged
+    # Only 1 query made because seq.xml file unchanged
     assert mock_post.call_count == 1
     assert mock_post.call_args_list[0][0][0] == \
-        'http://zerowire/user/seq.json'
+        'http://zerowire/user/seq.xml'
     assert uobj.areas[0]['sequence'] == 1

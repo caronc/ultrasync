@@ -104,7 +104,7 @@ def test_comnav_0_108_communication(mock_post):
     assert len(uobj.areas) == 1
     assert uobj.areas[0]['name'] == 'Home'
     assert uobj.areas[0]['bank'] == 0
-    assert uobj.areas[0]['sequence'] == 178
+    assert uobj.areas[0]['sequence'] == 1
     assert uobj.areas[0]['status'] == 'Ready'
 
     assert isinstance(uobj.zones, dict)
@@ -157,7 +157,7 @@ def test_comnav_0_108_communication(mock_post):
     assert mock_post.call_count == 1
     assert mock_post.call_args_list[0][0][0] == \
         'http://zerowire/user/seq.xml'
-    assert uobj.areas[0]['sequence'] == 178
+    assert uobj.areas[0]['sequence'] == 1
 
     # Update our sequence file so that it reflects a change
     with open(join(ULTRASYNC_TEST_VAR_DIR, 'seq.w.update.xml'), 'rb') as f:
@@ -185,7 +185,7 @@ def test_comnav_0_108_communication(mock_post):
     assert uobj.areas[0]['name'] == 'Home'
     assert uobj.areas[0]['bank'] == 0
     # Our sequence got bumped
-    assert uobj.areas[0]['sequence'] == 179
+    assert uobj.areas[0]['sequence'] == 1
     assert uobj.areas[0]['status'] == 'Ready'
 
     # Reset our mock object
@@ -200,4 +200,4 @@ def test_comnav_0_108_communication(mock_post):
     assert mock_post.call_count == 1
     assert mock_post.call_args_list[0][0][0] == \
         'http://zerowire/user/seq.xml'
-    assert uobj.areas[0]['sequence'] == 179
+    assert uobj.areas[0]['sequence'] == 1
