@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2019 Chris Caron <lead2gold@gmail.com>
+# Copyright (C) 2021 Chris Caron <lead2gold@gmail.com>
 # All rights reserved.
 #
 # This code is licensed under the MIT License.
@@ -46,13 +46,14 @@ else:
 
 setup(
     name='ultrasync',
-    version='0.9.2',
-    description='Wrapper to Hills/Interlogix UltraSync ComNav/ZeroWire Hub',
+    version='0.9.3',
+    description='Wrapper to XGen/Hills/Interlogix NX-595E/UltraSync ZeroWire',
     license='MIT',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     url='https://github.com/caronc/ultrasync',
-    keywords='Hills ComNav Interlogix UltraSync ZeroWire Security Panel',
+    keywords='XGen Hills ComNav Interlogix UltraSync NX-595E ZeroWire '
+             'Security Panel',
     author='Chris Caron',
     author_email='lead2gold@gmail.com',
     packages=find_packages(),
@@ -70,7 +71,7 @@ setup(
         'Topic :: Software Development :: Libraries :: Application Frameworks',
     ),
     entry_points={'console_scripts': console_scripts},
-    python_requires='>=3.4',
+    python_requires='>=3.7',
     setup_requires=['pytest-runner'],
     tests_require=open('dev-requirements.txt').readlines(),
 )
