@@ -642,83 +642,65 @@ class UltraSync(UltraSyncConfig):
         #
         # Get our Area Sequence
         #
-        if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN):
-            # Interlogix entries look like:
-            #   It looks like this in the area.htm response
-            #    var areaSequence = [149,0,0,0,0,0,0,0,0,0,0,0];
 
-            # xGen entries look like:
-            #    var areaSequence = [149];
-            match = re.search(
-                r'var areaSequence\s*=\s*'
-                r'(?P<sequence>[^]]+]).*', response, re.M)
-            if not match:
-                # No match and/or bad login
-                return False
-            self._asequence = json.loads(match.group('sequence'))
+        # Interlogix entries look like:
+        #   It looks like this in the area.htm response
+        #    var areaSequence = [149,0,0,0,0,0,0,0,0,0,0,0];
 
-        else:  # self.vendor is NX595EVendor.COMNAV
-            # It looks like this in the area.htm response
-            #  var areaSequence = new Array(104);
-            match = re.search(
-                r'var areaSequence\s*=\s*'
-                r'(new\s+)?Array\((?P<sequence>[^)]+)\).*', response, re.M)
-            if not match:
-                # No match and/or bad login
-                return False
-            self._asequence = json.loads(
-                '[{}]'.format(match.group('sequence')))
+        # xGen entries look like:
+        #    var areaSequence = [149];
+
+        # ComNav looks like this:
+        #  var areaSequence = new Array(104);
+        match = re.search(
+            r'var areaSequence\s*=\s*'
+            r'((new\s+)?Array)?[\[(](?P<sequence>[^\])]+)[\])];.*',
+            response, re.M)
+
+        if not match:
+            # No match and/or bad login
+            return False
+        self._asequence = json.loads(
+            '[{}]'.format(match.group('sequence')))
 
         #
         # Get our Area Status (Bank States)
         #
-        if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN):
-            # It looks like this in the area.htm response:
-            #  var areaStatus = ["0100000000...000000"];
-            match = re.search(
-                r'var areaStatus\s*=\s*(?P<states>[^]]+]).*', response, re.M)
-            if not match:
-                # No match and/or bad login
-                return False
-            bank_states = json.loads(match.group('states'))
 
-        else:  # self.vendor is NX595EVendor.COMNAV
-            # It looks like this in the area.htm response:
-            #  var areaStatus = new Array(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-            #
-            # Every chunk of 17 bank states represents 1 area
-            match = re.search(
-                r'var areaStatus\s*=\s*'
-                r'(new\s*)?Array\((?P<states>[^)]+)\).*', response, re.M)
-            if not match:
-                # No match and/or bad login
-                return False
-            bank_states = json.loads('[{}]'.format(match.group('states')))
+        # Interlogix and XGen entries look like this:
+        #  var areaStatus = ["0100000000...000000"];
+        #
+        # ComNav entries looks like this:
+        #  var areaStatus = new Array(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+        #
+        # Every chunk of 17 bank states represents 1 area
+        match = re.search(
+            r'var areaStatus\s*=\s*'
+            r'((new\s+)?Array)?[\[(](?P<states>[^\])]+)[\])];.*',
+            response, re.M)
+        if not match:
+            # No match and/or bad login
+            return False
+        bank_states = json.loads('[{}]'.format(match.group('states')))
 
         #
         # Get our Area Names
         #
-        if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN):
-            # It looks like this in the area.htm response:
-            #  var areaNames = ["","%21","%21","%21","%21","%21","%21","%21"];
-            match = re.search(
-                r'var areaNames\s*=\s*'
-                r'(?P<area_names>[^]]+]);.*', response, re.M)
-            if not match:
-                # No match and/or bad login
-                return False
-            area_names = json.loads(match.group('area_names'))
 
-        else:  # self.vendor is NX595EVendor.COMNAV
-            # It looks like this in the area.htm response:
-            #  new Array("","!","!","!","!","!","!","!");
-            match = re.search(
-                r'var areaNames\s*=\s*'
-                r'(new\s*)?Array\((?P<area_names>[^)]+)\).*', response, re.M)
-            if not match:
-                # No match and/or bad login
-                return False
-            area_names = json.loads('[{}]'.format(match.group('area_names')))
+        # Interlogix and XGen entries look like this:
+        #  var areaNames = ["","%21","%21","%21","%21","%21","%21","%21"];
+        #
+        # ComNav entries looks like this:
+        # It looks like this in the area.htm response:
+        #  new Array("","!","!","!","!","!","!","!");
+        match = re.search(
+            r'var areaNames\s*=\s*'
+            r'((new\s+)?Array)?[\[(](?P<area_names>[^\])]+)[\])];.*',
+            response, re.M)
+        if not match:
+            # No match and/or bad login
+            return False
+        area_names = json.loads('[{}]'.format(match.group('area_names')))
 
         # Ensure we've defined all of our possible sequences and areas
         self._asequence.extend(
@@ -1426,42 +1408,40 @@ class UltraSync(UltraSyncConfig):
         #
         # Get our Zone Sequence
         #
-        if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN):
-            # It looks like this in the zone.htm response:
-            #  var zoneSequence = [110,0,2,73,8,38,0,0,0,10,83,0,0,0,0,0,16,0];
-            match = re.search(
-                r'var zoneSequence\s*=\s*'
-                r'(?P<sequence>[^]]+]);.*', response, re.M)
-            if not match:
-                # No match and/or bad login
-                return False
-            # Store our sequence
-            self._zsequence = json.loads(match.group('sequence'))
 
-        else:  # self.vendor is NX595EVendor.COMNAV
-            # It looks like this in the zone.htm response:
-            #  var zoneSequence = new Array(27,0,0,0,239,182,0,0)
-            match = re.search(
-                r'var zoneSequence\s*=\s*'
-                r'(new\s+)?Array\((?P<sequence>[^)]+)\).*', response, re.M)
-            if not match:
-                # No match and/or bad login
-                return False
-            self._zsequence = json.loads(
-                '[{}]'.format(match.group('sequence')))
+        # Interlogix and XGen look like this:
+        #  var zoneSequence = [110,0,2,73,8,38,0,0,0,10,83,0,0,0,0,0,16,0];
+        #
+        # ComNav and XGen8 looks like this:
+        #  var zoneSequence = new Array(27,0,0,0,239,182,0,0)
+        match = re.search(
+            r'var zoneSequence\s*=\s*'
+            r'((new\s+)?Array)?[\[(](?P<sequence>[^\])]+)[\])];.*',
+            response, re.M)
+        if not match:
+            # No match and/or bad login
+            return False
+        self._zsequence = json.loads(
+            '[{}]'.format(match.group('sequence')))
 
         #
         # Get our Zone Sequence
         #
         if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN):
-            # It looks like this in the zone.htm response:
+            # XGen and Interlogix look like this:
             #  var zoneStatus = ["0100000000...000000"];
+
+            # XGen8 looks like this
+            #  var zoneStatus =["000000000000","000000000000", ... ];
+
             match = re.search(
-                r'var zoneStatus\s*=\s*(?P<states>[^]]+]);.*', response, re.M)
+                r'var zoneStatus\s*=\s*'
+                r'((new\s+)?Array)?[\[(](?P<states>[^\])]+)[\])];.*',
+                response, re.M)
             if not match:
                 # No match and/or bad login
                 return False
-            self._zbank = json.loads(match.group('states'))
+            self._zbank = json.loads('[{}]'.format(match.group('states')))
 
         else:  # self.vendor is NX595EVendor.COMNAV
 
@@ -1485,32 +1465,26 @@ class UltraSync(UltraSyncConfig):
         #
         # Get our Zone Names
         #
-        if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN):
-            # It looks like this in the zones.htm response:
-            #  var zoneNames = ["Front%20door","Garage%20Door","..."];
-            match = re.search(
-                r'var zoneNames\s*=\s*'
-                r'(?P<zone_names>[^]]+]);.*', response, re.M)
-            if not match:
-                # No match and/or bad login
-                return False
-            zone_names = json.loads(match.group('zone_names'))
-            zone_naming = True
 
-        else:  # self.vendor is NX595EVendor.COMNAV
+        # Interlogix an XGen looks like:
+        #  var zoneNames = ["Front%20door","Garage%20Door","..."];
+        #
+        # ComNav and XGen8 looks like this:
+        #  var zoneNames = new Array("Front%20door","Garage%20Door","...");
+        match = re.search(
+            r'var zoneNames\s*=\s*'
+            r'((new\s+)?Array)?[\[(](?P<zone_names>[^\])]+)[\])];.*',
+            response, re.M)
+        if not match:
+            # No match and/or bad login
+            return False
 
-            # It looks like this in the zone.htm response:
-            #  var zoneNames = new Array("Front%20door","Garage%20Door","...");
-            match = re.search(
-                r'var zoneNames\s*=\s*'
-                r'(new\s+)?Array\((?P<zone_names>[^)]+)\).*', response, re.M)
-            if not match:
-                # No match and/or bad login
-                return False
-            zone_names = json.loads('[{}]'.format(match.group('zone_names')))
-            # v0.106 does not support naming of zones. Determine if we're
-            # this version
-            zone_naming = True if float(self.version) > 0.106 else False
+        zone_names = json.loads('[{}]'.format(match.group('zone_names')))
+
+        # ComNav v0.106 does not support naming of zones. Determine if
+        # we're this version
+        zone_naming = False if self.vendor is NX595EVendor.COMNAV \
+            and float(self.version) <= 0.106 else True
 
         # Store our Zones:
         # The following are unused sensors:
