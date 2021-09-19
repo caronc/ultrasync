@@ -37,14 +37,15 @@ logging.disable(logging.CRITICAL)
 
 # Reference Directory
 ULTRASYNC_TEST_VAR_DIR = \
-    join(dirname(__file__), 'var', NX595EVendor.XGEN, 'xgen8')
+    join(dirname(__file__), 'var', NX595EVendor.XGEN8, 'nxg8zbo')
 
 
 @mock.patch('requests.Session.post')
-def test_xgen8_general_communication(mock_post):
+def test_xgen8_nxg8zbo_communication(mock_post):
     """
-    Test xGen 8 ZeroWire Hub Communication
-
+    Test xGen 8 NXG-8-Z-BO ZeroWire Hub Communication
+    Source:
+      https://firesecurityproducts.com/en/product/intrusion/NXG_8_Z_BO/82651
     """
 
     # A area response object
@@ -110,7 +111,7 @@ def test_xgen8_general_communication(mock_post):
 
     # Test that we're a xGen v8
     assert uobj.login()
-    assert uobj.vendor is NX595EVendor.XGEN
+    assert uobj.vendor is NX595EVendor.XGEN8
     assert uobj.version == '8.000'
     assert uobj.release == '0'
 
@@ -124,7 +125,7 @@ def test_xgen8_general_communication(mock_post):
 
     assert isinstance(uobj.zones, dict)
     # we have 4 zones defined
-    assert len(uobj.zones) == 4
+    assert len(uobj.zones) == 16
     bank = 0
     assert uobj.zones[bank]['name'] == 'Sensor 1'
     assert uobj.zones[bank]['bank'] == bank
@@ -143,7 +144,7 @@ def test_xgen8_general_communication(mock_post):
     assert uobj.zones[bank]['name'] == 'Sensor 3'
     assert uobj.zones[bank]['bank'] == bank
     assert uobj.zones[bank]['sequence'] == 1
-    assert uobj.zones[bank]['status'] == 'Ready'
+    assert uobj.zones[bank]['status'] == 'Not Ready'
     assert uobj.zones[bank]['can_bypass'] is True
 
     bank = 3
@@ -175,8 +176,8 @@ def test_xgen8_general_communication(mock_post):
     assert uobj.areas[0]['name'] == 'Area 1'
     assert uobj.areas[0]['bank'] == 0
     # Our sequence got bumped
-    assert uobj.areas[0]['sequence'] == 2
-    assert uobj.areas[0]['status'] == 'Ready'
+    assert uobj.areas[0]['sequence'] == 1
+    assert uobj.areas[0]['status'] == 'Not Ready'
 
     # Reset our mock object
     mock_post.reset_mock()
@@ -190,7 +191,8 @@ def test_xgen8_general_communication(mock_post):
     assert mock_post.call_count == 1
     assert mock_post.call_args_list[0][0][0] == \
         'http://zerowire/user/seq.json'
-    assert uobj.areas[0]['sequence'] == 2
+    assert uobj.areas[0]['sequence'] == 1
+    assert uobj.areas[0]['status'] == 'Not Ready'
 
     # Reset our mock object
     mock_post.reset_mock()
@@ -207,3 +209,11 @@ def test_xgen8_general_communication(mock_post):
         'http://zerowire/user/seq.json'
     assert mock_post.call_args_list[1][0][0] == \
         'http://zerowire/user/zstate.json'
+
+    assert isinstance(uobj.areas, dict)
+    assert len(uobj.areas) == 1
+    assert uobj.areas[0]['name'] == 'Area 1'
+    assert uobj.areas[0]['bank'] == 0
+    # Our sequence got bumped
+    assert uobj.areas[0]['sequence'] == 1
+    assert uobj.areas[0]['status'] == 'Not Ready'
