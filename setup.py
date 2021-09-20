@@ -46,13 +46,14 @@ else:
 
 setup(
     name='ultrasync',
-    version='0.9.3',
-    description='Wrapper to XGen/Hills/Interlogix NX-595E/UltraSync ZeroWire',
+    version='0.9.4',
+    description='Wrapper to XGen/XGen8/Hills/Interlogix NX-595E/UltraSync '
+                'ZeroWire',
     license='MIT',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     url='https://github.com/caronc/ultrasync',
-    keywords='XGen Hills ComNav Interlogix UltraSync NX-595E ZeroWire '
+    keywords='XGen XGen8 Hills ComNav Interlogix UltraSync NX-595E ZeroWire '
              'Security Panel',
     author='Chris Caron',
     author_email='lead2gold@gmail.com',
