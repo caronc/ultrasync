@@ -169,9 +169,15 @@ class UltraSync(UltraSyncConfig):
         #   script src="/v_ZW_03.02-C/status.js"
         #                     ^
         #                     |
+
+        # However, XGen8 use:
+        #   - /javascript
+        #   - /xGen __ Secure Network_file
+        #
         match = re.search(
-            r'script src="(?P<path>/v_(?P<vendor>[^_]+)'
-            r'_0?(?P<version>[0-9]\.[0-9.]*)(-(?P<release>[^/]+))?).*',
+            r'script src="(?P<path>/(v_(?P<vendor>[^_]+)'
+            r'_0?(?P<version>[0-9]\.[0-9.]*)(-(?P<release>[^/]+))?'
+            r'|(?P<xgen8>(xGen __ Secure Network_files|javascript)))).*',
             response, re.M)
         if not match:
             # No match and/or bad login
@@ -180,23 +186,31 @@ class UltraSync(UltraSyncConfig):
         # Store our path
         self.__panel_url_path = match.group('path')
 
+        if match.group('xgen8'):
+            self.vendor = NX595EVendor.XGEN8
+            self.version = '8.000'
+            self.release = '0'
+
         # Determine our Vendor and Version information
-        if match.group('vendor') == 'ZW':
+        elif match.group('vendor') == 'ZW':
             self.vendor = NX595EVendor.ZEROWIRE
+            self.version = match.group('version')
+            self.release = match.group('release')
 
         elif match.group('vendor') == 'CN':
             self.vendor = NX595EVendor.COMNAV
+            self.version = match.group('version')
+            self.release = match.group('release')
 
         elif match.group('vendor') == 'XG':
             self.vendor = NX595EVendor.XGEN
+            self.version = match.group('version')
+            self.release = match.group('release')
 
         else:
             logger.error(
                 'Unsupported vendor {}'.format(match.group('vendor')))
             return False
-
-        self.version = match.group('version')
-        self.release = match.group('release')
 
         logger.debug('Detected {} NX-595E, Web Interface v{}-{}'.format(
             self.vendor,
@@ -281,7 +295,8 @@ class UltraSync(UltraSyncConfig):
             },
         }
 
-        if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN):
+        if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN,
+                           NX595EVendor.XGEN8):
 
             urls.update({
                 # Used to acquire sequence
@@ -494,7 +509,8 @@ class UltraSync(UltraSyncConfig):
                 'sess': self.session_id,
             }
 
-            if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN):
+            if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN,
+                               NX595EVendor.XGEN8):
                 payload.update({
                     'start': int(math.floor((area - 1) / 8)),
                     'mask': 1 << (area - 1) % 8,
@@ -628,83 +644,65 @@ class UltraSync(UltraSyncConfig):
         #
         # Get our Area Sequence
         #
-        if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN):
-            # Interlogix entries look like:
-            #   It looks like this in the area.htm response
-            #    var areaSequence = [149,0,0,0,0,0,0,0,0,0,0,0];
 
-            # xGen entries look like:
-            #    var areaSequence = [149];
-            match = re.search(
-                r'var areaSequence\s*=\s*'
-                r'(?P<sequence>[^]]+]).*', response, re.M)
-            if not match:
-                # No match and/or bad login
-                return False
-            self._asequence = json.loads(match.group('sequence'))
+        # Interlogix entries look like:
+        #   It looks like this in the area.htm response
+        #    var areaSequence = [149,0,0,0,0,0,0,0,0,0,0,0];
 
-        else:  # self.vendor is NX595EVendor.COMNAV
-            # It looks like this in the area.htm response
-            #  var areaSequence = new Array(104);
-            match = re.search(
-                r'var areaSequence\s*=\s*'
-                r'(new\s+)?Array\((?P<sequence>[^)]+)\).*', response, re.M)
-            if not match:
-                # No match and/or bad login
-                return False
-            self._asequence = json.loads(
-                '[{}]'.format(match.group('sequence')))
+        # xGen entries look like:
+        #    var areaSequence = [149];
+
+        # ComNav looks like this:
+        #  var areaSequence = new Array(104);
+        match = re.search(
+            r'var areaSequence\s*=\s*'
+            r'((new\s+)?Array)?[\[(](?P<sequence>[^\])]+)[\])];.*',
+            response, re.M)
+
+        if not match:
+            # No match and/or bad login
+            return False
+        self._asequence = json.loads(
+            '[{}]'.format(match.group('sequence')))
 
         #
         # Get our Area Status (Bank States)
         #
-        if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN):
-            # It looks like this in the area.htm response:
-            #  var areaStatus = ["0100000000...000000"];
-            match = re.search(
-                r'var areaStatus\s*=\s*(?P<states>[^]]+]).*', response, re.M)
-            if not match:
-                # No match and/or bad login
-                return False
-            bank_states = json.loads(match.group('states'))
 
-        else:  # self.vendor is NX595EVendor.COMNAV
-            # It looks like this in the area.htm response:
-            #  var areaStatus = new Array(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
-            #
-            # Every chunk of 17 bank states represents 1 area
-            match = re.search(
-                r'var areaStatus\s*=\s*'
-                r'(new\s*)?Array\((?P<states>[^)]+)\).*', response, re.M)
-            if not match:
-                # No match and/or bad login
-                return False
-            bank_states = json.loads('[{}]'.format(match.group('states')))
+        # Interlogix and XGen entries look like this:
+        #  var areaStatus = ["0100000000...000000"];
+        #
+        # ComNav entries looks like this:
+        #  var areaStatus = new Array(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+        #
+        # Every chunk of 17 bank states represents 1 area
+        match = re.search(
+            r'var areaStatus\s*=\s*'
+            r'((new\s+)?Array)?[\[(](?P<states>[^\])]+)[\])];.*',
+            response, re.M)
+        if not match:
+            # No match and/or bad login
+            return False
+        bank_states = json.loads('[{}]'.format(match.group('states')))
 
         #
         # Get our Area Names
         #
-        if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN):
-            # It looks like this in the area.htm response:
-            #  var areaNames = ["","%21","%21","%21","%21","%21","%21","%21"];
-            match = re.search(
-                r'var areaNames\s*=\s*'
-                r'(?P<area_names>[^]]+]);.*', response, re.M)
-            if not match:
-                # No match and/or bad login
-                return False
-            area_names = json.loads(match.group('area_names'))
 
-        else:  # self.vendor is NX595EVendor.COMNAV
-            # It looks like this in the area.htm response:
-            #  new Array("","!","!","!","!","!","!","!");
-            match = re.search(
-                r'var areaNames\s*=\s*'
-                r'(new\s*)?Array\((?P<area_names>[^)]+)\).*', response, re.M)
-            if not match:
-                # No match and/or bad login
-                return False
-            area_names = json.loads('[{}]'.format(match.group('area_names')))
+        # Interlogix and XGen entries look like this:
+        #  var areaNames = ["","%21","%21","%21","%21","%21","%21","%21"];
+        #
+        # ComNav entries looks like this:
+        # It looks like this in the area.htm response:
+        #  new Array("","!","!","!","!","!","!","!");
+        match = re.search(
+            r'var areaNames\s*=\s*'
+            r'((new\s+)?Array)?[\[(](?P<area_names>[^\])]+)[\])];.*',
+            response, re.M)
+        if not match:
+            # No match and/or bad login
+            return False
+        area_names = json.loads('[{}]'.format(match.group('area_names')))
 
         # Ensure we've defined all of our possible sequences and areas
         self._asequence.extend(
@@ -731,11 +729,16 @@ class UltraSync(UltraSyncConfig):
         Processes our area information based on what was loaded in our
         configuration
         """
-        return getattr(self, '{}_process_areas'.format(self.vendor))()
+        # Xgen8 and Xgen share the same area processing
+        vendor = self.vendor \
+            if self.vendor != NX595EVendor.XGEN8 else NX595EVendor.XGEN
+        return getattr(self, '{}_process_areas'.format(vendor))()
 
     def xgen_process_areas(self):
         """
         Process our area information based on current configuration
+
+        Note: this gets called for both XGEN and XGEN8 models
 
         """
         # The following was reverse-engineered from status.js on the xGen
@@ -1171,7 +1174,81 @@ class UltraSync(UltraSyncConfig):
     def xgen_process_zones(self):
         """
         Updates our zone/sensor information based on new configuration
+        """
 
+        # The following was reverse-engineered from status.js
+        # from the function updateZone():
+        for bank, zone in self.zones.items():
+
+            # some globals
+            mask = 1 << bank % 8
+
+            # Our initial offset
+            idx = math.floor(bank / 8) * 2
+
+            # Priority, the lower, the higher it is; 5 being the lowest
+            priority = 5
+
+            # prepare ourselves a virtual states for reference
+            vbank = [int(self._zbank[s][idx:idx + 2], 16) & mask
+                     for s in range(0, 18)]
+
+            # Update our zone virtual bank
+            self._zvbank[bank] = ''.join(
+                [str(1 if b else 0) for b in vbank])
+
+            # Track whether or not element is part of things
+            can_bypass = not vbank[ZoneBank.BYPASS_DISABLED]
+
+            if vbank[ZoneBank.UNKWN_05]:
+                # red
+                priority = 1
+
+            elif vbank[ZoneBank.UNKWN_01] or vbank[ZoneBank.UNKWN_02] or \
+                    vbank[ZoneBank.UNKWN_06] or vbank[ZoneBank.UNKWN_07] or \
+                    vbank[ZoneBank.UNKWN_08] or vbank[ZoneBank.UNKWN_12]:
+                # blue
+                priority = 2
+
+            elif vbank[ZoneBank.UNKWN_03] or vbank[ZoneBank.UNKWN_04]:
+                # yellow
+                priority = 3
+
+            elif vbank[ZoneBank.UNKWN_00]:
+                # grey
+                priority = 4
+
+            bank_no = 0
+
+            status = None
+            while not status:
+                if vbank[bank_no]:
+                    status = ZONE_STATES[bank_no]
+
+                elif bank_no == 0:
+                    status = ZoneStatus.READY
+
+                # Increment our index
+                bank_no += 1
+
+            # Update our sequence
+            sequence = UltraSync.next_sequence(
+                zone.get('sequence', 0)) \
+                if zone.get('bank_state') != self._zvbank[bank] \
+                else zone.get('sequence', 0)
+
+            zone.update({
+                'priority': priority,
+                'status': status,
+                'can_bypass': can_bypass,
+                'bank_state': self._zvbank[bank],
+                'sequence': sequence,
+            })
+        return True
+
+    def xgen8_process_zones(self):
+        """
+        Updates our zone/sensor information based on new configuration
         """
 
         # The following was reverse-engineered from status.js
@@ -1412,42 +1489,41 @@ class UltraSync(UltraSyncConfig):
         #
         # Get our Zone Sequence
         #
-        if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN):
-            # It looks like this in the zone.htm response:
-            #  var zoneSequence = [110,0,2,73,8,38,0,0,0,10,83,0,0,0,0,0,16,0];
-            match = re.search(
-                r'var zoneSequence\s*=\s*'
-                r'(?P<sequence>[^]]+]);.*', response, re.M)
-            if not match:
-                # No match and/or bad login
-                return False
-            # Store our sequence
-            self._zsequence = json.loads(match.group('sequence'))
 
-        else:  # self.vendor is NX595EVendor.COMNAV
-            # It looks like this in the zone.htm response:
-            #  var zoneSequence = new Array(27,0,0,0,239,182,0,0)
-            match = re.search(
-                r'var zoneSequence\s*=\s*'
-                r'(new\s+)?Array\((?P<sequence>[^)]+)\).*', response, re.M)
-            if not match:
-                # No match and/or bad login
-                return False
-            self._zsequence = json.loads(
-                '[{}]'.format(match.group('sequence')))
+        # Interlogix and XGen look like this:
+        #  var zoneSequence = [110,0,2,73,8,38,0,0,0,10,83,0,0,0,0,0,16,0];
+        #
+        # ComNav and XGen8 looks like this:
+        #  var zoneSequence = new Array(27,0,0,0,239,182,0,0)
+        match = re.search(
+            r'var zoneSequence\s*=\s*'
+            r'((new\s+)?Array)?[\[(](?P<sequence>[^\])]+)[\])];.*',
+            response, re.M)
+        if not match:
+            # No match and/or bad login
+            return False
+        self._zsequence = json.loads(
+            '[{}]'.format(match.group('sequence')))
 
         #
         # Get our Zone Sequence
         #
-        if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN):
-            # It looks like this in the zone.htm response:
+        if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN,
+                           NX595EVendor.XGEN8):
+            # XGen and Interlogix look like this:
             #  var zoneStatus = ["0100000000...000000"];
+
+            # XGen8 looks like this
+            #  var zoneStatus =["000000000000","000000000000", ... ];
+
             match = re.search(
-                r'var zoneStatus\s*=\s*(?P<states>[^]]+]);.*', response, re.M)
+                r'var zoneStatus\s*=\s*'
+                r'((new\s+)?Array)?[\[(](?P<states>[^\])]+)[\])];.*',
+                response, re.M)
             if not match:
                 # No match and/or bad login
                 return False
-            self._zbank = json.loads(match.group('states'))
+            self._zbank = json.loads('[{}]'.format(match.group('states')))
 
         else:  # self.vendor is NX595EVendor.COMNAV
 
@@ -1471,32 +1547,26 @@ class UltraSync(UltraSyncConfig):
         #
         # Get our Zone Names
         #
-        if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN):
-            # It looks like this in the zones.htm response:
-            #  var zoneNames = ["Front%20door","Garage%20Door","..."];
-            match = re.search(
-                r'var zoneNames\s*=\s*'
-                r'(?P<zone_names>[^]]+]);.*', response, re.M)
-            if not match:
-                # No match and/or bad login
-                return False
-            zone_names = json.loads(match.group('zone_names'))
-            zone_naming = True
 
-        else:  # self.vendor is NX595EVendor.COMNAV
+        # Interlogix an XGen looks like:
+        #  var zoneNames = ["Front%20door","Garage%20Door","..."];
+        #
+        # ComNav and XGen8 looks like this:
+        #  var zoneNames = new Array("Front%20door","Garage%20Door","...");
+        match = re.search(
+            r'var zoneNames\s*=\s*'
+            r'((new\s+)?Array)?[\[(](?P<zone_names>[^\])]+)[\])];.*',
+            response, re.M)
+        if not match:
+            # No match and/or bad login
+            return False
 
-            # It looks like this in the zone.htm response:
-            #  var zoneNames = new Array("Front%20door","Garage%20Door","...");
-            match = re.search(
-                r'var zoneNames\s*=\s*'
-                r'(new\s+)?Array\((?P<zone_names>[^)]+)\).*', response, re.M)
-            if not match:
-                # No match and/or bad login
-                return False
-            zone_names = json.loads('[{}]'.format(match.group('zone_names')))
-            # v0.106 does not support naming of zones. Determine if we're
-            # this version
-            zone_naming = True if float(self.version) > 0.106 else False
+        zone_names = json.loads('[{}]'.format(match.group('zone_names')))
+
+        # ComNav v0.106 does not support naming of zones. Determine if
+        # we're this version
+        zone_naming = False if self.vendor is NX595EVendor.COMNAV \
+            and float(self.version) <= 0.106 else True
 
         # Store our Zones:
         # The following are unused sensors:
@@ -1611,6 +1681,62 @@ class UltraSync(UltraSyncConfig):
             "zwtmp":[]
         }
 
+        """
+
+        logger.debug(
+            'Updating Area information on bank {}'.format(bank))
+
+        if not self.session_id and not self.login():
+            return None
+
+        payload = {
+            'sess': self.session_id,
+
+            # Select the Area Bank
+            'arsel': bank,
+        }
+
+        # Perform our Query
+        response = self.__get(
+            '/user/status.json', rtype=HubResponseType.JSON, payload=payload)
+        if not response:
+            return None
+
+        # Store our Fault Status (if set)
+        self.__extra_area_status = \
+            [unquote(e).strip() for e in response.get('system', [])]
+
+        # Update our bank states
+        self.areas[bank]['bank_state'] = response['bankstates']
+
+        # Convert Hex time to Local Date Time
+        response['time'] = datetime.fromtimestamp(
+            int(response['time'], 16)).strftime('%Y-%m-%d %H:%M:%S')
+
+        return response
+
+    def _xgen8_area_status_update(self, bank=0):
+        """
+        Performs a area status check for the Interlogix ZeroWire Hub
+
+        A status response could look like this:
+        {
+            "time":"5F834156",
+            "abank":0,
+            "aseq":109,
+            "bankstates":"0300000000000000000000000000000000000100\
+                          0000000000000000000000000000000000000000",
+            "entry":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
+            "exit":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                    0,0,0,0,0,0,0,0,0,0,0,0],
+            "system":[],
+            "zwtmp":[]
+        }
         """
 
         logger.debug(
@@ -1806,6 +1932,48 @@ class UltraSync(UltraSyncConfig):
 
         return response
 
+    def _xgen8_zone_status_update(self, bank=0):
+        """
+        Performs a zone status check for the Xgen8 Zerowire Hub
+
+        A status response could look like this:
+        {
+            "time":"5F8DE0C6",
+            "zbank":0,
+            "zseq":134,
+            "bankstates":"DE05",
+            "system":[]
+        }
+        """
+
+        logger.debug(
+            'Updating Zone/Sensor information on bank {}'.format(bank))
+
+        if not self.session_id and not self.login():
+            return None
+
+        payload = {
+            'sess': self.session_id,
+
+            # Select the Zone Bank
+            'state': bank,
+        }
+
+        # Perform our Query
+        response = self.__get(
+            '/user/zstate.json', rtype=HubResponseType.JSON, payload=payload)
+        if not response:
+            return None
+
+        # Update our bank states (by coverting it back to binary)
+        self._zbank[bank] = response['bankstates']
+
+        # Convert Hex time to Local Date Time
+        response['time'] = datetime.fromtimestamp(
+            int(response['time'], 16)).strftime('%Y-%m-%d %H:%M:%S')
+
+        return response
+
     def _comnav_zone_status_update(self, bank=0):
         """
         Performs a zone status check for the ComNav Hub
@@ -1940,6 +2108,87 @@ class UltraSync(UltraSyncConfig):
             "chime":[3,0,0,0],
             "config":12345,
             "zwdevice":67890
+        }
+
+        A sequence is a way of polling the panel to see if there is anything
+        new to report. If there are no changes, then the sequence values
+        remain unchanged.
+
+        If a sequence value is changed, the index of the 'area' is the bank
+        that was updated.... so if index 0 was updated, then Area 1 changed.
+        It is up to the user to call for an _area_status_update() with the
+        respected index that needs updating.
+
+        The same goes for if a 'zone' bank changes; a call to
+        _zone_status_update() is required to be called referencing the
+        respected bank that changed.
+
+        """
+        if not self.session_id and not self.login():
+            return None
+
+        # Perform our Query
+        response = self.__get('/user/seq.json', rtype=HubResponseType.JSON)
+        if not response:
+            return None
+
+        # Convert Hex time to Local Date Time
+        response['time'] = datetime.fromtimestamp(
+            int(response['time'], 16)).strftime('%Y-%m-%d %H:%M:%S')
+
+        perform_area_update = False
+        perform_zone_update = False
+
+        # Process Zones/Sensors first
+        for bank, sequence in enumerate(self._zsequence):
+            if sequence != response['zone'][bank]:
+                logger.debug('Zone Bank {}:{} changed'.format(bank, sequence))
+                # We need to update our status here
+                self._zsequence[bank] = response['zone'][bank]
+                self._zone_status_update(bank=bank)
+                perform_zone_update = True
+
+        # Process Area now
+        for bank, sequence in enumerate(self._asequence):
+            if bank >= len(response['area']):
+                # We're done
+                break
+
+            if sequence != response['area'][bank]:
+                logger.debug('Area Bank {}:{} changed'.format(bank, sequence))
+                # We need to update our status here
+                self._asequence[bank] = response['area'][bank]
+                self._area_status_update(bank=bank)
+                perform_area_update = True
+
+        if perform_zone_update:
+            # Update our zone sequence
+            self._zsequence = response['zone']
+
+            # Process all of our triggered zones/sensors
+            self.process_zones()
+
+        if perform_area_update:
+            # Process all of our triggered areas
+            self.process_areas()
+
+        return response
+
+    def _xgen8_sequence(self):
+        """
+        Returns the sequences for both the zones, entries, and areas
+
+        A sequence response could look like this:
+        {
+            "time":"60D1B269",
+            "area":[50],
+            "zone":[160,0,0,83,196,79,0,0,140,0,43,62,234,0,0],
+            "chime":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                     0,0,0,0,0,0,0,0,0,0,0,0],
+            "config":30757,
+            "zwdevice":15396
         }
 
         A sequence is a way of polling the panel to see if there is anything

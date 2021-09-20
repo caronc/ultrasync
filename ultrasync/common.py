@@ -39,6 +39,9 @@ class NX595EVendor(object):
     # xGen UltraSync
     XGEN = 'xgen'
 
+    # xGen8 UltraSync
+    XGEN8 = 'xgen8'
+
 
 class XGZWPanelFunction(object):
     """

@@ -1,0 +1,67 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="X-UA-Compatible" content="IE=edge">
+	<title>xGen :: Secure Network</title>
+	<meta name="viewport" content="initial-scale=1.0, width=device-width, maximum-scale = 1.0, minimum-scale = 1.0" />
+    <script src="/javascript/eng_eu.js" charset="utf-8"></script>
+	<link href="/javascript/m.css" rel="stylesheet">
+	<script src="/javascript/master.js" charset="utf-8"></script>
+	<script src="/javascript/status.js" charset="utf-8"></script>
+
+</head>
+<body onload = "afterLoad();">
+	<script>
+	var areaDisplay = new Array(0);
+
+	var areaNames = ["Area%201","%21","%21","%21","%21","%21","%21","%21"];
+	var areaSequence = [132];
+	var areaStatus = ["00000000000000000000000000000000000000000000000000000000000000000000000000000000"];
+	var entryTime = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+	var exitTime = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+	var sysStatus = [];
+	var areaCount = 0;
+    var allAway = false;
+    var allStay = false;
+    var allChime = false;
+    var allpriority = 6;
+    var allSequence = 0;
+    var tampers = [];
+
+	function getSession(){return "36A0153DB8A5E2ED";}
+	</script>
+
+	<div id="w">
+		<!-- buildBanner() inserts banner html here -->
+		<!-- buildMenu() inserts status menu here -->
+		<!-- buildAreas() inserts areas html here -->
+	</div>
+
+	<script>
+	sysStatus = new Array();
+
+	function afterLoad()
+	{
+		convertNames(areaNames);
+		buildBanner(defaultNames[22]);
+        buildMenu(1,0,1,1,1,1,1);
+		buildAreas();
+		setTimeout("updateAllAreas()",1500);
+		areaSequence[0] += 100;
+		setTimeout("pollSequence()", 100);
+        timeOutMS = 20000;
+        region = 2;
+
+
+	}
+
+	// function called by iPhone to return "{active menu index, authorised menu list}"
+	// Note: the iPhone will display in the order presented here. see master.jss
+	function getMenu()
+	{
+		return "[0,[1,1,1,1,1,1,1,0]]";
+	}
+	</script>
+</body>
+</html>
