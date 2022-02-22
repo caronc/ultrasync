@@ -572,6 +572,54 @@ class UltraSync(UltraSyncConfig):
 
         return not has_error
 
+    def set_zone_bypass(self, zone, state=False):
+        """
+        Sets zone bypass
+
+        """
+        if not self.session_id and not self.login():
+            return False
+
+        if not isinstance(zone, int) or zone - 1 not in self.zones.keys():
+            logger.error(
+                '{} is not valid zone'.format(zone))
+            return False
+
+        # A boolean for tracking any errors
+        has_error = False
+
+        # Start our payload off with our session identifier
+        payload = {
+            'sess': self.session_id,
+        }
+
+        if self.vendor in (NX595EVendor.XGEN8):
+            payload.update({
+                'cmd': 5,
+                'opt': int(state),
+                'zone': zone - 1,
+            })
+
+        else:  # self.vendor is NX595EVendor.{COMNAV, ZEROWIRE, XGEN}
+
+            logger.error(
+                'Bypass not implemented for vendor {}'.format(self.vendor))
+            return False
+
+        # Send our response
+        response = self.__get(
+            '/user/zonefunction.cgi', payload=payload)
+
+        if not response:
+            logger.info(
+                'Failed to set bypass={} for zone {}'.format(state, zone))
+            has_error = True
+
+        logger.info(
+            'Set bypass={} for zone {} Successfully'.format(state, zone))
+
+        return not has_error
+
     def update(self, ref=None, max_age_sec=1):
         """
         Updates classmeta information
