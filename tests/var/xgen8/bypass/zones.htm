@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>xGen :: Secure Network</title>
+  <meta name="viewport" content="initial-scale=1.0, width=device-width, maximum-scale = 1.0, minimum-scale = 1.0" />
+  <script src="/javascript/eng_eu.js" charset="utf-8"></script>
+   <link href="/javascript/m.css" rel="stylesheet">
+  <script src="/javascript/master.js" charset="utf-8"></script>
+  <script src="/javascript/status.js" charset="utf-8"></script>
+ 
+</head>
+<body onload = "afterLoad();">
+  <script>
+  var zoneDisplay = new Array(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
+
+  var zoneNames = new Array("Sensor%201","Sensor%202","Sensor%203","Sensor%204","Sensor%205","Sensor%206","Sensor%207","Sensor%208","Sensor%209","Sensor%2010","Sensor%2011","Sensor%2012","Sensor%2013","Sensor%2014","Sensor%2015");
+  var zoneSequence = new Array(104,0,0,74,36,71,0,0,0,2,89,66,7,0,0,0,0,0,0,0,0);
+  var zoneStatus = ["448E","0000","0000","0000","0000","0000","0000","0000","0000","0000","0000","4000","0000","0000","0000","0000","0000","0000","0000","0000","0000"];
+  var ismaster = 1;
+  var isinstaller = 0;
+  
+  function getSession(){return "A211F303FB0939C0";}
+  </script>
+
+  <div id="w">
+    <!-- buildBanner() inserts banner html here -->
+    <!-- buildMenu() inserts status menu here -->
+    <!-- buildZones() inserts zones html here -->
+  </div>
+ 
+  <script>
+  function afterLoad()
+  {
+  	convertNames(zoneNames);
+    buildBanner(defaultNames[22]);
+    buildMenu(2,0,1,1,1,1,1);
+ 	try{
+ 		zoneStatus = JSON.parse(zoneStatus);
+ 	}catch(ex){}
+     
+    buildZones();
+    timeOutMS = 20000;
+    region = 2;
+    setTimeout("updateAllZones()",100);
+    setTimeout("newAJAXCommand('/user/seq.json', checkZoneSeq, false)", 1000);
+  }
+
+  // function called by iPhone to return "{active menu index, authorised menu list}"
+  // Note: the iPhone will display in the order presented here. see master.jss
+  function getMenu()
+  {
+    return "[1, [1,1,1,1,1,1,1,0]]";
+  }
+  </script>
+</body>
+</html>
