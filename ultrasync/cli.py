@@ -95,10 +95,16 @@ def print_version_msg():
               help='Specify the alarm scene to change to. Possible values '
               'are "{}", and "{}".'.format(
                   '", "'.join(ALARM_SCENES[:-1]), ALARM_SCENES[-1]))
+@click.option('--bypass', type=bool,
+              metavar='BYPASS',
+              help='Set to 1 to bypass a zone, set to 0 to unbypass.')
 @click.option('--area', '-a', default=0, type=int, metavar='AREA',
               help='Specify the Area you wish to target with a --scene (-s) '
               'action. If no area is specified, then *all* areas are '
               'targeted.')
+@click.option('--zone', type=int, metavar='ZONE',
+              help='Specify the Zone you wish to target with a --bypass '
+              'action.')
 @click.option('--full-debug-dump', is_flag=True,
               help='Dump a full set of tracing files to a archive for '
               'comparison/debug purposes. Usually the --debug-dump is '
@@ -109,8 +115,8 @@ def print_version_msg():
 @click.option('--verbose', '-v', count=True)
 @click.option('--version', '-V', is_flag=True,
               help='Display the version of the ultrasync library and exit.')
-def main(config, debug_dump, full_debug_dump, scene, details, watch,
-         area, verbose, version):
+def main(config, debug_dump, full_debug_dump, scene, bypass, details, watch,
+         area, zone, verbose, version):
     """
     Wrapper to ultrasync library.
     """
@@ -188,6 +194,11 @@ def main(config, debug_dump, full_debug_dump, scene, details, watch,
 
     if scene:
         if not usync.set_alarm(areas=area, state=scene):
+            sys.exit(1)
+        actioned = True
+
+    if bypass is not None:
+        if not usync.set_zone_bypass(zone=zone, state=bypass):
             sys.exit(1)
         actioned = True
 
