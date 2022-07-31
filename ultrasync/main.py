@@ -593,7 +593,7 @@ class UltraSync(UltraSyncConfig):
             'sess': self.session_id,
         }
 
-        if self.vendor in (NX595EVendor.XGEN8):
+        if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN8):
             payload.update({
                 'cmd': 5,
                 'opt': int(state),
