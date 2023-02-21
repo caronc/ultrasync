@@ -600,8 +600,13 @@ class UltraSync(UltraSyncConfig):
                 'zone': zone - 1,
             })
 
-        else:  # self.vendor is NX595EVendor.{COMNAV, ZEROWIRE, XGEN}
-
+        elif self.vendor in (NX595EVendor.COMNAV):
+            payload.update({
+                'comm': 82,
+                'data0': zone - 1,
+            })
+            
+        else:  # self.vendor is NX595EVendor.{ZEROWIRE, XGEN}
             logger.error(
                 'Bypass not implemented for vendor {}'.format(self.vendor))
             return False
