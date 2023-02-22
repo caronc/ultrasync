@@ -1477,6 +1477,9 @@ class UltraSync(UltraSyncConfig):
             self._zvbank[bank] = ''.join(
                 [str(1 if b else 0) for b in vbank])
 
+            # Track whether or not element is part of things
+            can_bypass = not vbank[ZoneBank.UNKWN_03]
+            
             if vbank[ZoneBank.UNKWN_05]:
                 # red
                 priority = 1
