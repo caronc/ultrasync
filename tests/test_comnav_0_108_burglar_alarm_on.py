@@ -135,7 +135,7 @@ def test_comnav_0_108_active_burglary(mock_post):
         assert uobj.zones[entry['bank']]['sequence'] == 1
         assert uobj.zones[entry['bank']]['status'] == \
             entry.get('status', 'Ready')
-        assert uobj.zones[entry['bank']]['can_bypass'] is None
+        assert uobj.zones[entry['bank']]['can_bypass'] is True
 
     # A call to login.cgi (which fetches area.html) and then zones.htm
     assert mock_post.call_count == 2

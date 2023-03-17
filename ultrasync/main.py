@@ -599,8 +599,22 @@ class UltraSync(UltraSyncConfig):
                 'opt': int(state),
                 'zone': zone - 1,
             })
+        elif self.vendor in (NX595EVendor.COMNAV):
+            # Call comnav_process_zones to update can_bypass attribute
+            self.comnav_process_zones
 
-        else:  # self.vendor is NX595EVendor.{COMNAV, ZEROWIRE, XGEN}
+            # Get the current can_bypass state of the zone
+            can_bypass = self.zones[zone - 1]['can_bypass']
+            # If the current can_bypass state does not match the desired bypass
+            # state, toggle the bypass state
+            if can_bypass == state:
+                # Start our payload off with our session identifier
+                payload = {
+                    'sess': self.session_id,
+                    'comm': 82,
+                    'data0': zone - 1,
+                }
+        else:
 
             logger.error(
                 'Bypass not implemented for vendor {}'.format(self.vendor))
@@ -1472,6 +1486,9 @@ class UltraSync(UltraSyncConfig):
             self._zvbank[bank] = ''.join(
                 [str(1 if b else 0) for b in vbank])
 
+            # Track whether or not element is part of things
+            can_bypass = not vbank[ZoneBank.UNKWN_03]
+
             if vbank[ZoneBank.UNKWN_05]:
                 # red
                 priority = 1
@@ -1512,7 +1529,7 @@ class UltraSync(UltraSyncConfig):
             zone.update({
                 'priority': priority,
                 'status': status,
-                'can_bypass': None,
+                'can_bypass': can_bypass,
                 'bank_state': self._zvbank[bank],
                 'sequence': sequence,
             })
