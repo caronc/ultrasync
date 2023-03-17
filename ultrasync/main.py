@@ -614,7 +614,7 @@ class UltraSync(UltraSyncConfig):
                     'comm': 82,
                     'data0': zone - 1,
                 }
-        else:
+        else:   # self.vendor is NX595EVendor.{ZEROWIRE, XGEN}
 
             logger.error(
                 'Bypass not implemented for vendor {}'.format(self.vendor))
