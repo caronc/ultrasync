@@ -593,20 +593,26 @@ class UltraSync(UltraSyncConfig):
             'sess': self.session_id,
         }
 
-        if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN8):
-            payload.update({
+        if self.vendor in (NX595EVendor.XGEN8):
+                payload.update({
                 'cmd': 5,
                 'opt': int(state),
                 'zone': zone - 1,
             })
+            
+                # Send our response
+                response = self.__get(
+                    '/user/zonefunction.cgi', payload=payload)
+
         elif self.vendor in (NX595EVendor.COMNAV):
             # Call comnav_process_zones to update can_bypass attribute
             self.comnav_process_zones
 
             # Get the current can_bypass state of the zone
             can_bypass = self.zones[zone - 1]['can_bypass']
-            # If the current can_bypass state does not match the desired bypass
-            # state, toggle the bypass state
+
+            # If the current can_bypass state does not match the desired bypass state,
+            # toggle the bypass state
             if can_bypass == state:
                 # Start our payload off with our session identifier
                 payload = {
@@ -614,6 +620,13 @@ class UltraSync(UltraSyncConfig):
                     'comm': 82,
                     'data0': zone - 1,
                 }
+            else: 
+                payload = {}
+
+            # Send our response
+            response = self.__get(
+                '/user/zonefunction.cgi', payload=payload)
+ 
         else:   # self.vendor is NX595EVendor.{ZEROWIRE, XGEN}
 
             logger.error(
