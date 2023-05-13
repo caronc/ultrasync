@@ -633,9 +633,6 @@ class UltraSync(UltraSyncConfig):
                 'Bypass not implemented for vendor {}'.format(self.vendor))
             return False
 
-        # Send our response
-        response = self.__get(
-            '/user/zonefunction.cgi', payload=payload)
 
         if not response:
             logger.info(
