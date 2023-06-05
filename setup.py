@@ -46,7 +46,7 @@ else:
 
 setup(
     name='ultrasync',
-    version='0.9.7',
+    version='0.9.8',
     description='Wrapper to XGen/XGen8/Hills/Interlogix NX-595E/UltraSync '
                 'ZeroWire',
     license='MIT',
