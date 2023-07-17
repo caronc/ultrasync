@@ -226,6 +226,8 @@ class UltraSync(UltraSyncConfig):
         # Update our time reference
         self.__updated = datetime.now()
 
+
+        self.output_control()
         # We're good
         return True if self.session_id else False
 
@@ -277,6 +279,11 @@ class UltraSync(UltraSyncConfig):
             # Zones URL
             'zones.htm': {
                 'path': '/user/zones.htm',
+            },
+
+            # Output Control URL
+            'outputs.htm': {
+                'path': '/user/outputs.htm',
             },
 
             # Config Main Screen
@@ -2090,6 +2097,47 @@ class UltraSync(UltraSyncConfig):
             return None
 
         return response
+
+    # Output Control Attempt
+    def output_control(self):
+        """
+        Parses the Output Control from the UltraSync panel
+        """
+
+        if not self.session_id and not self.login():
+            return False
+
+        logger.info('Retrieving initial Zone/Sensor information.')
+
+        # Perform our Query
+        response = self.__get('/user/outputs.htm', rtype=HubResponseType.RAW)
+        if not response:
+            print("no response")
+            return False
+
+        print(response)
+
+        # Regex to capture output names and states
+        name_pattern = re.compile(r'var oname(\d) = decodeURIComponent\(decode_utf8\("([^"]*)"\)\);')
+        state_pattern = re.compile(r'var ostate(\d) = "(\d)";')
+
+        # Extract names and states
+        names = {int(m.group(1)): m.group(2) for m in name_pattern.finditer(response)}
+        states = {int(m.group(1)): m.group(2) for m in state_pattern.finditer(response)}
+
+        # Create a dictionary for each output and collect them in a list
+        outputs = []
+        for i in range(1, max(len(names), len(states)) + 1):
+            output = {
+                'name': names.get(i, ''),
+                'state': states.get(i, '0'),
+            }
+            outputs.append(output)
+        print(outputs)
+
+        
+        return True
+
 
     def _sequence(self):
         """
