@@ -226,8 +226,6 @@ class UltraSync(UltraSyncConfig):
         # Update our time reference
         self.__updated = datetime.now()
 
-
-        self.output_control()
         # We're good
         return True if self.session_id else False
 
@@ -684,6 +682,7 @@ class UltraSync(UltraSyncConfig):
         if not self.update(max_age_sec=max_age_sec):
             return {}
 
+        self.output_control()
         # Build our response object
         response = {
             'user': {
@@ -2135,7 +2134,17 @@ class UltraSync(UltraSyncConfig):
             outputs.append(output)
         print(outputs)
 
+        # Send command to set output to on
+        payload = {
+            'sess': self.session_id,
+            'onum': 1,
+            'ostate': 1
+            }
+
+        response = self.__get(
+            '/user/output.cgi', payload=payload)
         
+        print(response)
         return True
 
 
