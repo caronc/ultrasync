@@ -2134,19 +2134,49 @@ class UltraSync(UltraSyncConfig):
             outputs.append(output)
         print(outputs)
 
-        # Send command to set output to on
-        payload = {
-            'sess': self.session_id,
-            'onum': 1,
-            'ostate': 1
-            }
-
-        response = self.__get(
-            '/user/output.cgi', payload=payload)
-        
-        print(response)
+        self.set_output_control("1", "1")
         return True
 
+    def set_output_control(self, output, state):
+        """
+        Sets output controll on/off
+
+        """
+        if not self.session_id and not self.login():
+            return False
+
+        """ Needs to be edited to do logging for output control
+        if not isinstance(zone, int) or zone - 1 not in self.zones.keys():
+            logger.error(
+                '{} is not valid zone'.format(zone))
+            return False
+        """
+
+        # A boolean for tracking any errors
+        has_error = False
+
+        # Start our payload off with our session identifier
+        payload = {
+            'sess': self.session_id,
+        }
+
+        # Update payload with variables
+        payload.update({
+            'onum': output,
+            'ostate': state
+            })
+
+        # Send out response
+        response = self.__get(
+            '/user/output.cgi', payload=payload)
+
+        """
+        Section for logging errors here:
+
+
+        """
+
+        return not has_error
 
     def _sequence(self):
         """
