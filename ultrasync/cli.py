@@ -208,6 +208,9 @@ def main(config, debug_dump, full_debug_dump, scene, bypass, details, watch,
         actioned = True
     
     if output is not None and switch is not None:
+        if switch not in [0,1]:
+            logger.error('Switch state should be either 0 or 1')
+            sys.exit(1)
         if not usync.set_output_control(output=output, state=switch):
             sys.exit(1)
         actioned = True

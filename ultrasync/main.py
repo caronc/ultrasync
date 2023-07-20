@@ -2100,7 +2100,6 @@ class UltraSync(UltraSyncConfig):
 
         return response
 
-    # Output Control Attempt
     def output_control(self):
         """
         Parses the Output Control from the UltraSync panel
@@ -2108,15 +2107,12 @@ class UltraSync(UltraSyncConfig):
 
         if not self.session_id and not self.login():
             return False
-        """
-        Need Proper logging
-        logger.info('Retrieving initial Zone/Sensor information.')
-        """
+        
+        logger.info('Retrieving initial Output Control information.')
 
         # Perform our Query
         response = self.__get('/user/outputs.htm', rtype=HubResponseType.RAW)
         if not response:
-            print("no response")
             return False
 
         # Regex to capture output names and states
@@ -2133,24 +2129,22 @@ class UltraSync(UltraSyncConfig):
                 'name': names.get(i, ''),
                 'state': states.get(i, '0'),
             }
-            
+
         return True
 
     def set_output_control(self, output, state):
         """
-        Sets output controll on/off
+        Sets output control on/off
 
         """
         if not self.session_id and not self.login():
             return False
 
-        """ Needs to be edited to do logging for output control
-        if not isinstance(zone, int) or zone - 1 not in self.zones.keys():
+        if not isinstance(output, int) or output not in self.outputs.keys():
             logger.error(
-                '{} is not valid zone'.format(zone))
+                '{} is not valid output'.format(output))
             return False
-        """
-
+        
         # A boolean for tracking any errors
         has_error = False
 
@@ -2169,12 +2163,14 @@ class UltraSync(UltraSyncConfig):
         response = self.__get(
             '/user/output.cgi', payload=payload)
 
-        """
-        Section for logging errors here:
+        if not response:
+            logger.info(
+                'Failed to set state={} for output {}'.format(state, output))
+            has_error = True
 
-
-        """
-
+        logger.info(
+            'Set state={} for output {} successfully'.format(state, output))
+    
         return not has_error
 
     def _sequence(self):
