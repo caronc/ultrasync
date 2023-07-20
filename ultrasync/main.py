@@ -118,6 +118,9 @@ class UltraSync(UltraSyncConfig):
         self.areas = {}
         self._asequence = None
 
+        # Our output controls get populated after we connect
+        self.outputs = {}
+
         # Track the time our information was polled from our panel
         self.__updated = None
 
@@ -218,7 +221,7 @@ class UltraSync(UltraSyncConfig):
             self.release,
         ))
 
-        if not self._areas(response=response) or not self._zones():
+        if not self._areas(response=response) or not self._zones() or not self.output_control():
             # No match and/or bad login
             logger.error('Failed to authenticate to {}'.format(self.host))
             return False
@@ -677,12 +680,11 @@ class UltraSync(UltraSyncConfig):
 
     def details(self, max_age_sec=1):
         """
-        Arranges the areas and zones into an easy to manage dictionary
+        Arranges the areas, zones and outputs into an easy to manage dictionary
         """
         if not self.update(max_age_sec=max_age_sec):
             return {}
 
-        self.output_control()
         # Build our response object
         response = {
             'user': {
@@ -691,6 +693,7 @@ class UltraSync(UltraSyncConfig):
             },
             'zones': [z for z in self.zones.values()],
             'areas': [a for a in self.areas.values()],
+            'outputs': [o for o in self.outputs.values()],
             'date': self.__updated.strftime('%Y-%m-%d %H:%M:%S'),
         }
 
@@ -2105,8 +2108,10 @@ class UltraSync(UltraSyncConfig):
 
         if not self.session_id and not self.login():
             return False
-
+        """
+        Need Proper logging
         logger.info('Retrieving initial Zone/Sensor information.')
+        """
 
         # Perform our Query
         response = self.__get('/user/outputs.htm', rtype=HubResponseType.RAW)
@@ -2114,27 +2119,21 @@ class UltraSync(UltraSyncConfig):
             print("no response")
             return False
 
-        print(response)
-
         # Regex to capture output names and states
         name_pattern = re.compile(r'var oname(\d) = decodeURIComponent\(decode_utf8\("([^"]*)"\)\);')
         state_pattern = re.compile(r'var ostate(\d) = "(\d)";')
 
         # Extract names and states
-        names = {int(m.group(1)): m.group(2) for m in name_pattern.finditer(response)}
+        names = {int(m.group(1)): unquote(m.group(2)) for m in name_pattern.finditer(response)}
         states = {int(m.group(1)): m.group(2) for m in state_pattern.finditer(response)}
 
-        # Create a dictionary for each output and collect them in a list
-        outputs = []
+        # Store our outputs:
         for i in range(1, max(len(names), len(states)) + 1):
-            output = {
+            self.outputs[i] = {
                 'name': names.get(i, ''),
                 'state': states.get(i, '0'),
             }
-            outputs.append(output)
-        print(outputs)
-
-        self.set_output_control("1", "1")
+            
         return True
 
     def set_output_control(self, output, state):
