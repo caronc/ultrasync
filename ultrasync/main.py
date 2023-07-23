@@ -2115,21 +2115,29 @@ class UltraSync(UltraSyncConfig):
         if not response:
             return False
 
-        # Regex to capture output names and states
-        name_pattern = re.compile(r'var oname(\d) = decodeURIComponent\(decode_utf8\("([^"]*)"\)\);')
-        state_pattern = re.compile(r'var ostate(\d) = "(\d)";')
+        if self.vendor is NX595EVendor.COMNAV:
+            # Regex to capture output names and states
+            name_pattern = re.compile(r'var oname(\d) = decodeURIComponent\(decode_utf8\("([^"]*)"\)\);')
+            state_pattern = re.compile(r'var ostate(\d) = "(\d)";')
 
-        # Extract names and states
-        names = {int(m.group(1)): unquote(m.group(2)) for m in name_pattern.finditer(response)}
-        states = {int(m.group(1)): m.group(2) for m in state_pattern.finditer(response)}
+            # Extract names and states
+            names = {int(m.group(1)): unquote(m.group(2)) for m in name_pattern.finditer(response)}
+            states = {int(m.group(1)): m.group(2) for m in state_pattern.finditer(response)}
 
-        # Store our outputs:
-        for i in range(1, max(len(names), len(states)) + 1):
-            self.outputs[i] = {
-                'name': names.get(i, ''),
-                'state': states.get(i, '0'),
-            }
+            # Store our outputs:
+            for i in range(1, max(len(names), len(states)) + 1):
+                self.outputs[i] = {
+                    'name': names.get(i, ''),
+                    'state': states.get(i, '0'),
+                }
+        # If Vendor is supported, elif statement for vendor goes here:
 
+        # Otherwise:
+        else:
+            logger.error(
+                'Output Control not implemented for vendor {}'.format(self.vendor))
+            return False
+        
         return True
 
     def set_output_control(self, output, state):
@@ -2153,15 +2161,23 @@ class UltraSync(UltraSyncConfig):
             'sess': self.session_id,
         }
 
-        # Update payload with variables
-        payload.update({
-            'onum': output,
-            'ostate': state
-            })
+        if self.vendor is NX595EVendor.COMNAV:
+            # Update payload with variables
+            payload.update({
+                'onum': output,
+                'ostate': state
+                })
 
-        # Send out response
-        response = self.__get(
-            '/user/output.cgi', payload=payload)
+            # Send our response
+            response = self.__get(
+                '/user/output.cgi', payload=payload)
+        # If Vendor is supported, elif statement for vendor goes here:
+
+        # Otherwise:
+        else:
+            logger.error(
+                'Output Control not implemented for vendor {}'.format(self.vendor))
+            return False
 
         if not response:
             logger.info(
@@ -2170,7 +2186,7 @@ class UltraSync(UltraSyncConfig):
 
         logger.info(
             'Set state={} for output {} successfully'.format(state, output))
-    
+        
         return not has_error
 
     def _sequence(self):
