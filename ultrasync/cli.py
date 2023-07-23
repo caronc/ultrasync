@@ -105,6 +105,11 @@ def print_version_msg():
 @click.option('--zone', type=int, metavar='ZONE',
               help='Specify the Zone you wish to target with a --bypass '
               'action.')
+@click.option('--output', type=int, metavar='OUTPUT',
+              help='Specify the Output you wish to control with a --switch action.')
+@click.option('--switch', type=int,
+              metavar='STATE',
+              help='Set to 1 to turn on an output, set to 0 to turn it off.')
 @click.option('--full-debug-dump', is_flag=True,
               help='Dump a full set of tracing files to a archive for '
               'comparison/debug purposes. Usually the --debug-dump is '
@@ -116,7 +121,7 @@ def print_version_msg():
 @click.option('--version', '-V', is_flag=True,
               help='Display the version of the ultrasync library and exit.')
 def main(config, debug_dump, full_debug_dump, scene, bypass, details, watch,
-         area, zone, verbose, version):
+         area, zone, output, switch, verbose, version):
     """
     Wrapper to ultrasync library.
     """
@@ -201,6 +206,15 @@ def main(config, debug_dump, full_debug_dump, scene, bypass, details, watch,
         if not usync.set_zone_bypass(zone=zone, state=bypass):
             sys.exit(1)
         actioned = True
+    
+    if output is not None and switch is not None:
+        if switch not in [0,1]:
+            logger.error('Switch state should be either 0 or 1')
+            sys.exit(1)
+        if not usync.set_output_control(output=output, state=switch):
+            sys.exit(1)
+        actioned = True
+
 
     if watch:
         area_delta = {}

@@ -1,3 +1,26 @@
+# NX-595E Output Control Fork
+This fork is designated to implementing the "Output Control" section of the NX-595E. The main objective is to enable communication with the outputs and ensure its proper implementation.
+
+## How does output control work?
+Output Control is handled through the `output.htm` file within the web app. From my understanding, Output Controls has two key value pairs that identify each output:
+```
+  {
+    'name': "Garage Auto Door",
+    'state': "0",
+  }
+```
+In this example, the `name` is the name of the output and the `state` is whether the output is "on" or "off", 0 being "off" and 1 being "on"
+
+To activate the Output Control switch, a post request is made to `/user/output.cgi` with the following parameters:
+```
+  {
+    'sess': self.session_id,
+    'onum': 1,
+    'ostate': 1
+  }
+```
+In this example, the `sess` is referred to the session ID of the current login, `onum` is the index of the output (`'onum': 1` refers to the first output), and `ostate` which refers to the state in which you want to set the output (`'ostate': 1` means on and `'ostate': 0` means off).
+
 # NX-595E UltraSync Hub
 
 Compatible with both NX-595E [Hills](https://www.hills.com.au/) ComNav, xGen, xGen8 (such as [NXG-8-Z-BO](https://firesecurityproducts.com/en/product/intrusion/NXG_8_Z_BO/82651)), [Interlogix](https://www.interlogix.com/), and [ZeroWire](https://www.interlogix.com/intrusion/product/ultrasync-selfcontained-hub) UltraSync solutions.

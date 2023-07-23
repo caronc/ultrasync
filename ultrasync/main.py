@@ -118,6 +118,9 @@ class UltraSync(UltraSyncConfig):
         self.areas = {}
         self._asequence = None
 
+        # Our output controls get populated after we connect
+        self.outputs = {}
+
         # Track the time our information was polled from our panel
         self.__updated = None
 
@@ -218,7 +221,7 @@ class UltraSync(UltraSyncConfig):
             self.release,
         ))
 
-        if not self._areas(response=response) or not self._zones():
+        if not self._areas(response=response) or not self._zones() or not self.output_control():
             # No match and/or bad login
             logger.error('Failed to authenticate to {}'.format(self.host))
             return False
@@ -277,6 +280,11 @@ class UltraSync(UltraSyncConfig):
             # Zones URL
             'zones.htm': {
                 'path': '/user/zones.htm',
+            },
+
+            # Output Control URL
+            'outputs.htm': {
+                'path': '/user/outputs.htm',
             },
 
             # Config Main Screen
@@ -672,7 +680,7 @@ class UltraSync(UltraSyncConfig):
 
     def details(self, max_age_sec=1):
         """
-        Arranges the areas and zones into an easy to manage dictionary
+        Arranges the areas, zones and outputs into an easy to manage dictionary
         """
         if not self.update(max_age_sec=max_age_sec):
             return {}
@@ -685,6 +693,7 @@ class UltraSync(UltraSyncConfig):
             },
             'zones': [z for z in self.zones.values()],
             'areas': [a for a in self.areas.values()],
+            'outputs': [o for o in self.outputs.values()],
             'date': self.__updated.strftime('%Y-%m-%d %H:%M:%S'),
         }
 
@@ -2090,6 +2099,95 @@ class UltraSync(UltraSyncConfig):
             return None
 
         return response
+
+    def output_control(self):
+        """
+        Parses the Output Control from the UltraSync panel
+        """
+
+        if not self.session_id and not self.login():
+            return False
+        
+        logger.info('Retrieving initial Output Control information.')
+
+        # Perform our Query
+        response = self.__get('/user/outputs.htm', rtype=HubResponseType.RAW)
+        if not response:
+            return False
+
+        if self.vendor is NX595EVendor.COMNAV:
+            # Regex to capture output names and states
+            name_pattern = re.compile(r'var oname(\d) = decodeURIComponent\(decode_utf8\("([^"]*)"\)\);')
+            state_pattern = re.compile(r'var ostate(\d) = "(\d)";')
+
+            # Extract names and states
+            names = {int(m.group(1)): unquote(m.group(2)) for m in name_pattern.finditer(response)}
+            states = {int(m.group(1)): m.group(2) for m in state_pattern.finditer(response)}
+
+            # Store our outputs:
+            for i in range(1, max(len(names), len(states)) + 1):
+                self.outputs[i] = {
+                    'name': names.get(i, ''),
+                    'state': states.get(i, '0'),
+                }
+        # If Vendor is supported, elif statement for vendor goes here:
+
+        # Otherwise:
+        else:
+            logger.error(
+                'Output Control not implemented for vendor {}'.format(self.vendor))
+            return False
+        
+        return True
+
+    def set_output_control(self, output, state):
+        """
+        Sets output control on/off
+
+        """
+        if not self.session_id and not self.login():
+            return False
+
+        if not isinstance(output, int) or output not in self.outputs.keys():
+            logger.error(
+                '{} is not valid output'.format(output))
+            return False
+        
+        # A boolean for tracking any errors
+        has_error = False
+
+        # Start our payload off with our session identifier
+        payload = {
+            'sess': self.session_id,
+        }
+
+        if self.vendor is NX595EVendor.COMNAV:
+            # Update payload with variables
+            payload.update({
+                'onum': output,
+                'ostate': state
+                })
+
+            # Send our response
+            response = self.__get(
+                '/user/output.cgi', payload=payload)
+        # If Vendor is supported, elif statement for vendor goes here:
+
+        # Otherwise:
+        else:
+            logger.error(
+                'Output Control not implemented for vendor {}'.format(self.vendor))
+            return False
+
+        if not response:
+            logger.info(
+                'Failed to set state={} for output {}'.format(state, output))
+            has_error = True
+
+        logger.info(
+            'Set state={} for output {} successfully'.format(state, output))
+        
+        return not has_error
 
     def _sequence(self):
         """
