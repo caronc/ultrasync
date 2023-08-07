@@ -23,7 +23,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-import mock
+from unittest import mock
 import requests
 from os.path import join
 from os.path import dirname
@@ -87,8 +87,15 @@ def test_comnav_0_108_zone_filter(mock_post):
         ast_obj.content = f.read()
     ast_obj.status_code = requests.codes.ok
 
+    # A Control response object (for garage door handling)
+    # At the time, i did not have a sample to work with, so we will use empty
+    # data for now to satisfy tests
+    crobj = mock.Mock()
+    crobj.status_code = requests.codes.ok
+    crobj.content = b''
+
     # Assign our response object to our mocked instance of requests
-    mock_post.side_effect = (arobj, zrobj)
+    mock_post.side_effect = (arobj, zrobj, crobj)
 
     uobj = UltraSync()
 
@@ -118,11 +125,13 @@ def test_comnav_0_108_zone_filter(mock_post):
     assert len(uobj.zones) == 17
 
     # A call to login.cgi (which fetches area.html) and then zones.htm
-    assert mock_post.call_count == 2
+    assert mock_post.call_count == 3
     assert mock_post.call_args_list[0][0][0] == \
         'http://zerowire/login.cgi'
     assert mock_post.call_args_list[1][0][0] == \
         'http://zerowire/user/zones.htm'
+    assert mock_post.call_args_list[2][0][0] == \
+        'http://zerowire/user/outputs.htm'
 
     # Reset our mock object
     mock_post.reset_mock()

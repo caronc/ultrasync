@@ -221,10 +221,13 @@ class UltraSync(UltraSyncConfig):
             self.release,
         ))
 
-        if not self._areas(response=response) or not self._zones() or not self.output_control():
+        if not self._areas(response=response) or not self._zones():
             # No match and/or bad login
             logger.error('Failed to authenticate to {}'.format(self.host))
             return False
+
+        # Prepare output control (if supported)
+        self.output_control()
 
         # Update our time reference
         self.__updated = datetime.now()
@@ -602,15 +605,15 @@ class UltraSync(UltraSyncConfig):
         }
 
         if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN8):
-                payload.update({
+            payload.update({
                 'cmd': 5,
                 'opt': int(state),
                 'zone': zone - 1,
             })
-            
-                # Send our response
-                response = self.__get(
-                    '/user/zonefunction.cgi', payload=payload)
+
+            # Send our response
+            response = self.__get(
+                '/user/zonefunction.cgi', payload=payload)
 
         elif self.vendor in (NX595EVendor.COMNAV):
             # Call comnav_process_zones to update can_bypass attribute
@@ -619,8 +622,8 @@ class UltraSync(UltraSyncConfig):
             # Get the current can_bypass state of the zone
             can_bypass = self.zones[zone - 1]['can_bypass']
 
-            # If the current can_bypass state does not match the desired bypass state,
-            # toggle the bypass state
+            # If the current can_bypass state does not match the desired
+            # bypass state, toggle the bypass state
             if can_bypass == state:
                 # Start our payload off with our session identifier
                 payload = {
@@ -628,19 +631,18 @@ class UltraSync(UltraSyncConfig):
                     'comm': 82,
                     'data0': zone - 1,
                 }
-            else: 
+            else:
                 payload = {}
 
             # Send our response
             response = self.__get(
                 '/user/zonefunction.cgi', payload=payload)
- 
+
         else:   # self.vendor is NX595EVendor.{ZEROWIRE, XGEN}
 
             logger.error(
                 'Bypass not implemented for vendor {}'.format(self.vendor))
             return False
-
 
         if not response:
             logger.info(
@@ -2103,11 +2105,18 @@ class UltraSync(UltraSyncConfig):
     def output_control(self):
         """
         Parses the Output Control from the UltraSync panel
+
+        At this time, this feature is only supported by the COMNAV panels
         """
+
+        if self.vendor is not NX595EVendor.COMNAV:
+            # Only vendor that supports this right now is COMNAV
+            # Silently returned a positive status
+            return True
 
         if not self.session_id and not self.login():
             return False
-        
+
         logger.info('Retrieving initial Output Control information.')
 
         # Perform our Query
@@ -2115,14 +2124,17 @@ class UltraSync(UltraSyncConfig):
         if not response:
             return False
 
-        if self.vendor is NX595EVendor.COMNAV:
             # Regex to capture output names and states
-            name_pattern = re.compile(r'var oname(\d) = decodeURIComponent\(decode_utf8\("([^"]*)"\)\);')
+            name_pattern = re.compile(
+                r'var oname(\d) = decodeURIComponent'
+                r'\(decode_utf8\("([^"]*)"\)\);')
             state_pattern = re.compile(r'var ostate(\d) = "(\d)";')
 
             # Extract names and states
-            names = {int(m.group(1)): unquote(m.group(2)) for m in name_pattern.finditer(response)}
-            states = {int(m.group(1)): m.group(2) for m in state_pattern.finditer(response)}
+            names = {int(m.group(1)): unquote(m.group(2))
+                     for m in name_pattern.finditer(response)}
+            states = {int(m.group(1)): m.group(2)
+                      for m in state_pattern.finditer(response)}
 
             # Store our outputs:
             for i in range(1, max(len(names), len(states)) + 1):
@@ -2130,21 +2142,23 @@ class UltraSync(UltraSyncConfig):
                     'name': names.get(i, ''),
                     'state': states.get(i, '0'),
                 }
-        # If Vendor is supported, elif statement for vendor goes here:
-
-        # Otherwise:
-        else:
-            logger.error(
-                'Output Control not implemented for vendor {}'.format(self.vendor))
             return False
-        
+
         return True
 
     def set_output_control(self, output, state):
         """
         Sets output control on/off
 
+        At this time, this feature is only supported by the COMNAV panels
         """
+        if self.vendor is not NX595EVendor.COMNAV:
+            # Only vendor that supports this right now is COMNAV
+            logger.error(
+                'Output control not implemented for vendor {}'.format(
+                    self.vendor))
+            return False
+
         if not self.session_id and not self.login():
             return False
 
@@ -2152,7 +2166,7 @@ class UltraSync(UltraSyncConfig):
             logger.error(
                 '{} is not valid output'.format(output))
             return False
-        
+
         # A boolean for tracking any errors
         has_error = False
 
@@ -2161,24 +2175,14 @@ class UltraSync(UltraSyncConfig):
             'sess': self.session_id,
         }
 
-        if self.vendor is NX595EVendor.COMNAV:
-            # Update payload with variables
-            payload.update({
-                'onum': output,
-                'ostate': state
-                })
+        # Update payload with variables
+        payload.update({
+            'onum': output,
+            'ostate': state
+        })
 
-            # Send our response
-            response = self.__get(
-                '/user/output.cgi', payload=payload)
-        # If Vendor is supported, elif statement for vendor goes here:
-
-        # Otherwise:
-        else:
-            logger.error(
-                'Output Control not implemented for vendor {}'.format(self.vendor))
-            return False
-
+        # Send our response
+        response = self.__get('/user/output.cgi', payload=payload)
         if not response:
             logger.info(
                 'Failed to set state={} for output {}'.format(state, output))
@@ -2186,7 +2190,7 @@ class UltraSync(UltraSyncConfig):
 
         logger.info(
             'Set state={} for output {} successfully'.format(state, output))
-        
+
         return not has_error
 
     def _sequence(self):

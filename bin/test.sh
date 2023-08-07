@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 # Copyright (C) 2020 Chris Caron <lead2gold@gmail.com>
 # All rights reserved.
 #

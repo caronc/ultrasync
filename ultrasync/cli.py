@@ -106,7 +106,8 @@ def print_version_msg():
               help='Specify the Zone you wish to target with a --bypass '
               'action.')
 @click.option('--output', type=int, metavar='OUTPUT',
-              help='Specify the Output you wish to control with a --switch action.')
+              help='Specify the Output you wish to control with a '
+              '--switch action.')
 @click.option('--switch', type=int,
               metavar='STATE',
               help='Set to 1 to turn on an output, set to 0 to turn it off.')
@@ -206,15 +207,14 @@ def main(config, debug_dump, full_debug_dump, scene, bypass, details, watch,
         if not usync.set_zone_bypass(zone=zone, state=bypass):
             sys.exit(1)
         actioned = True
-    
+
     if output is not None and switch is not None:
-        if switch not in [0,1]:
+        if switch not in (0, 1):
             logger.error('Switch state should be either 0 or 1')
             sys.exit(1)
         if not usync.set_output_control(output=output, state=switch):
             sys.exit(1)
         actioned = True
-
 
     if watch:
         area_delta = {}
