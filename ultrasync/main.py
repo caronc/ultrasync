@@ -2124,25 +2124,24 @@ class UltraSync(UltraSyncConfig):
         if not response:
             return False
 
-            # Regex to capture output names and states
-            name_pattern = re.compile(
-                r'var oname(\d) = decodeURIComponent'
-                r'\(decode_utf8\("([^"]*)"\)\);')
-            state_pattern = re.compile(r'var ostate(\d) = "(\d)";')
+        # Regex to capture output names and states
+        name_pattern = re.compile(
+            r'var oname(\d) = decodeURIComponent'
+            r'\(decode_utf8\("([^"]*)"\)\);')
+        state_pattern = re.compile(r'var ostate(\d) = "(\d)";')
 
-            # Extract names and states
-            names = {int(m.group(1)): unquote(m.group(2))
-                     for m in name_pattern.finditer(response)}
-            states = {int(m.group(1)): m.group(2)
-                      for m in state_pattern.finditer(response)}
+        # Extract names and states
+        names = {int(m.group(1)): unquote(m.group(2))
+                for m in name_pattern.finditer(response)}
+        states = {int(m.group(1)): m.group(2)
+                for m in state_pattern.finditer(response)}
 
             # Store our outputs:
-            for i in range(1, max(len(names), len(states)) + 1):
-                self.outputs[i] = {
-                    'name': names.get(i, ''),
-                    'state': states.get(i, '0'),
-                }
-            return False
+        for i in range(1, max(len(names), len(states)) + 1):
+            self.outputs[i] = {
+                'name': names.get(i, ''),
+                'state': states.get(i, '0'),
+            }
 
         return True
 
@@ -2152,14 +2151,14 @@ class UltraSync(UltraSyncConfig):
 
         At this time, this feature is only supported by the COMNAV panels
         """
+        if not self.session_id and not self.login():
+            return False
+
         if self.vendor is not NX595EVendor.COMNAV:
             # Only vendor that supports this right now is COMNAV
             logger.error(
                 'Output control not implemented for vendor {}'.format(
                     self.vendor))
-            return False
-
-        if not self.session_id and not self.login():
             return False
 
         if not isinstance(output, int) or output not in self.outputs.keys():
