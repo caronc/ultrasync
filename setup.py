@@ -46,8 +46,8 @@ else:
 
 setup(
     name='ultrasync',
-    version='0.9.9',
-    description='Wrapper to XGen/XGen8/Hills/Interlogix NX-595E/UltraSync '
+    version='1.0.0',
+    description='Wrapper to XGen/XGen8/ComNav/Hills/Interlogix NX-595E/UltraSync '
                 'ZeroWire',
     license='MIT',
     long_description=open('README.md').read(),
