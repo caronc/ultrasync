@@ -42,6 +42,9 @@ class NX595EVendor(object):
     # xGen8 UltraSync
     XGEN8 = 'xgen8'
 
+    # uc331 ComNav UltraSync
+    COMNAV_UC3 = 'comnav-uc3'
+
 
 class XGZWPanelFunction(object):
     """
