@@ -329,11 +329,14 @@ class AlarmScene(object):
     # Alarm system is disarmed
     DISARMED = 'disarm'
 
-    # Alarm system is disarmed
-    DISARMED = 'disarm'
+    # Alarm system is in fire alarm
+    FIRE = 'fire'
     
-    # Alarm system is disarmed
-    DISARMED = 'disarm'
+    # Alarm system is in medical alarm
+    MEDICAL = 'medical'    
+    
+    # Alarm system is in panic alarm
+    PANIC = 'panic'
 
 # A list of all valid alarm states used for validating
 ALARM_SCENES = (
