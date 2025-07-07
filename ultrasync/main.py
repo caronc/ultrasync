@@ -562,6 +562,21 @@ class UltraSync(UltraSyncConfig):
                         'data2': CNPanelFunction.AREA_AWAY,
                     })
 
+                elif state == AlarmScene.FIRE:
+                    payload.update({
+                        'data2': CNPanelFunction.AREA_FIRE,
+                    })
+
+                elif state == AlarmScene.MEDICAL:
+                    payload.update({
+                        'data2': CNPanelFunction.AREA_MEDICAL,
+                    })
+
+                elif state == AlarmScene.PANIC:
+                    payload.update({
+                        'data2': CNPanelFunction.AREA_PANIC,
+                    })
+
                 else:   # AlarmScene.DISARMED
                     payload.update({
                         'data2': CNPanelFunction.AREA_DISARM,
