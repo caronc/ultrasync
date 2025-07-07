@@ -60,6 +60,9 @@ class CNPanelFunction(object):
     """
 
     AREA_CHIME_TOGGLE = 1
+    AREA_FIRE = 5
+    AREA_MEDICAL = 6
+    AREA_PANIC = 7
     AREA_DISARM = 16
     AREA_AWAY = 17
     AREA_STAY = 18
@@ -326,10 +329,18 @@ class AlarmScene(object):
     # Alarm system is disarmed
     DISARMED = 'disarm'
 
+    # Alarm system is disarmed
+    DISARMED = 'disarm'
+    
+    # Alarm system is disarmed
+    DISARMED = 'disarm'
 
 # A list of all valid alarm states used for validating
 ALARM_SCENES = (
     AlarmScene.AWAY,
     AlarmScene.STAY,
     AlarmScene.DISARMED,
+    AlarmScene.FIRE,
+    AlarmScene.MEDICAL,
+    AlarmScene.PANIC,
 )
