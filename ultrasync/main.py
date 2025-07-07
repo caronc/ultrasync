@@ -176,9 +176,12 @@ class UltraSync(UltraSyncConfig):
         # However, XGen8 use:
         #   - /javascript
         #   - /xGen __ Secure Network_file
+
+        # Comnav device:
+        #   - uc331/v_uc331_0.226/scripts/controllers/lang.js
         #
         match = re.search(
-            r'script src="(?P<path>/(v_(?P<vendor>[^_]+)'
+            r'script src=["\'](?P<cn3guc>uc[0-9]+)?(?P<path>/(v_(?P<vendor>[^_]+)'
             r'_0?(?P<version>[0-9]\.[0-9.]*)(-(?P<release>[^/]+))?'
             r'|(?P<xgen8>(xGen __ Secure Network_files|javascript)))).*',
             response, re.M)
@@ -207,6 +210,11 @@ class UltraSync(UltraSyncConfig):
 
         elif match.group('vendor') == 'XG':
             self.vendor = NX595EVendor.XGEN
+            self.version = match.group('version')
+            self.release = match.group('release')
+
+        elif match.group('vendor') == 'uc331':
+            self.vendor = NX595EVendor.COMNAV_UC3
             self.version = match.group('version')
             self.release = match.group('release')
 
