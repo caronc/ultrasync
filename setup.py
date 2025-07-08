@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2023 Chris Caron <lead2gold@gmail.com>
+# Copyright (C) 2025 Chris Caron <lead2gold@gmail.com>
 # All rights reserved.
 #
 # This code is licensed under the MIT License.
@@ -46,7 +46,7 @@ else:
 
 setup(
     name='ultrasync',
-    version='1.0.0',
+    version='1.0.1',
     description='Wrapper to XGen/XGen8/ComNav/Hills/Interlogix NX-595E/UltraSync '
                 'ZeroWire',
     license='MIT',

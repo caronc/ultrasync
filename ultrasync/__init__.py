@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2023 Chris Caron <lead2gold@gmail.com>
+# Copyright (C) 2025 Chris Caron <lead2gold@gmail.com>
 # All rights reserved.
 #
 # This code is licensed under the MIT License.
@@ -24,10 +24,10 @@
 # THE SOFTWARE.
 
 __title__ = 'ultrasync'
-__version__ = '1.0.0'
+__version__ = '1.0.1'
 __author__ = 'Chris Caron'
 __license__ = 'MIT'
-__copywrite__ = 'Copyright (C) 2023 Chris Caron <lead2gold@gmail.com>'
+__copywrite__ = 'Copyright (C) 2025 Chris Caron <lead2gold@gmail.com>'
 __email__ = 'lead2gold@gmail.com'
 __status__ = 'Production'
 
