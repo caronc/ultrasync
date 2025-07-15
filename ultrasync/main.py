@@ -2199,8 +2199,6 @@ class UltraSync(UltraSyncConfig):
                    'action': action,
                    'area_name': area_name,
                    'user': user,
-                   'time': time_str,
-                   'date': date_str,
                    'timestamp': timestamp,
                 }
             }
