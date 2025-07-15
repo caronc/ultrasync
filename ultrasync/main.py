@@ -118,6 +118,9 @@ class UltraSync(UltraSyncConfig):
         self.areas = {}
         self._asequence = None
 
+        # Our history gets populated after we connect
+        self.historyLatest = {}
+
         # Our output controls get populated after we connect
         self.outputs = {}
 
@@ -226,8 +229,9 @@ class UltraSync(UltraSyncConfig):
             logger.error('Failed to authenticate to {}'.format(self.host))
             return False
 
-        # Prepare output control (if supported)
+        # Prepare output control and history (if supported)
         self.output_control()
+        self.history()
 
         # Update our time reference
         self.__updated = datetime.now()
@@ -285,6 +289,11 @@ class UltraSync(UltraSyncConfig):
                 'path': '/user/zones.htm',
             },
 
+            # History URL
+            'history.htm': {
+                'path': '/user/history.htm',
+            },
+
             # Output Control URL
             'outputs.htm': {
                 'path': '/user/outputs.htm',
@@ -335,7 +344,7 @@ class UltraSync(UltraSyncConfig):
                 },
             })
 
-            # status.json - All Area's
+            # status.json - All Areas
             urls.update({'status.{}.json'.format(no + 1): {
                 'path': '/user/status.json',
                 'payload': {
@@ -395,7 +404,7 @@ class UltraSync(UltraSyncConfig):
                 },
             })
 
-            # status.xml - All Area's
+            # status.xml - All Areas
             urls.update({'status.{}.xml'.format(no + 1): {
                 'path': '/user/status.xml',
                 'payload': {
@@ -697,7 +706,7 @@ class UltraSync(UltraSyncConfig):
 
     def details(self, max_age_sec=1):
         """
-        Arranges the areas, zones and outputs into an easy to manage dictionary
+        Arranges the areas, zones, history, and outputs into an easy to manage dictionary
         """
         if not self.update(max_age_sec=max_age_sec):
             return {}
@@ -711,6 +720,7 @@ class UltraSync(UltraSyncConfig):
             'zones': [z for z in self.zones.values()],
             'areas': [a for a in self.areas.values()],
             'outputs': [o for o in self.outputs.values()],
+            'history': [h for h in self.historyLatest.values()],
             'date': self.__updated.strftime('%Y-%m-%d %H:%M:%S'),
         }
 
@@ -2116,6 +2126,86 @@ class UltraSync(UltraSyncConfig):
             return None
 
         return response
+
+    def history(self):
+
+        """
+        Parses the History Information from the UltraSync panel
+
+        At this time, this feature is only supported by the COMNAV panels
+        """
+
+        if self.vendor is not NX595EVendor.COMNAV:
+            # Only vendor that supports this right now is COMNAV
+            # Silently returned a positive status
+            return True
+
+        if not self.session_id and not self.login():
+            return False
+
+        logger.info('Retrieving initial History information.')
+
+        # Perform our Query
+        response = self.__get('/user/history.htm', rtype=HubResponseType.RAW)
+        if not response:
+            return False
+
+        #
+        # Extract the History
+        #
+
+        match = re.search(
+            r'<textarea[^>]*id=["\']event["\'][^>]*>(.*?)<\/textarea>',
+            response,
+            re.DOTALL | re.IGNORECASE
+            )
+
+        if not match:
+            logger.warning("Failed to gather history data from response")
+            self.historyLatest = {}
+            return True
+        lines = match.group(1).strip().splitlines()
+
+        if len(lines) < 5:
+            logger.warning("Unexpected history format, not enough lines")
+            self.historyLatest = {}
+            return True
+
+        # Clean lines and extract parts
+        lines = [line.strip().strip('*') for line in lines]
+        action = lines[0]
+        area_name = lines[1]
+        user = lines[2]
+        time_str = lines[3].split("Time:")[1].strip() if "Time:" in lines[3] else ""
+        date_str = lines[4].split("Date:")[1].strip() if "Date:" in lines[4] else ""
+
+        # Parse datetime to ISO format
+        timestamp = None
+        try:
+                now = datetime.now()
+                parsed_dt = datetime.strptime(f"{date_str} {now.year} {time_str}", "%d %b %Y %H:%M")
+
+                # Adjust if date is in future (i.e., from last year)
+                if (parsed_dt - now).days > 30:
+                    parsed_dt = parsed_dt.replace(year=now.year - 1)
+
+                timestamp = parsed_dt.isoformat()
+        except Exception as e:
+                logger.warning(f"Could not parse timestamp: {e}")
+
+         # Store history with index 1
+        self.historyLatest = {
+               1: {
+                   'action': action,
+                   'area_name': area_name,
+                   'user': user,
+                   'time': time_str,
+                   'date': date_str,
+                   'timestamp': timestamp,
+                }
+            }
+
+        return True
 
     def output_control(self):
         """
