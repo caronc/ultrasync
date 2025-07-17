@@ -146,13 +146,15 @@ def test_comnav_0_106_communication(mock_post):
         assert uobj.zones[entry['bank']]['can_bypass'] is True
 
     # A call to login.cgi (which fetches area.html) and then zones.htm
-    assert mock_post.call_count == 3
+    assert mock_post.call_count == 4
     assert mock_post.call_args_list[0][0][0] == \
         'http://zerowire/login.cgi'
     assert mock_post.call_args_list[1][0][0] == \
         'http://zerowire/user/zones.htm'
     assert mock_post.call_args_list[2][0][0] == \
         'http://zerowire/user/outputs.htm'
+    assert mock_post.call_args_list[3][0][0] == \
+        'http://zerowire/user/history.htm'
 
     # Reset our mock object
     mock_post.reset_mock()
