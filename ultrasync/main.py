@@ -38,6 +38,7 @@ from .common import (
     ZoneBank, ALARM_SCENES, AREA_STATES, ZONE_STATES, CNPanelFunction,
     XGZWPanelFunction, NX595EVendor, AREA_STATUS_PROCESS_PRIORITY)
 from .config import UltraSyncConfig
+from .exceptions import UltraSyncAuthentication, UltraSyncUnsupported
 from urllib.parse import unquote
 from .logger import logger
 
@@ -127,7 +128,7 @@ class UltraSync(UltraSyncConfig):
         # Track the Panel URL path
         self.__panel_url_path = None
 
-    def login(self):
+    def login(self, raise_on_error=False):
         """
         Performs login to UltraSync (which then redirects to area.htm)
 
@@ -146,7 +147,10 @@ class UltraSync(UltraSyncConfig):
             '/login.cgi', payload=payload,
             rtype=HubResponseType.RAW, auth_on_fail=False)
         if not response:
-            logger.error('Failed to authenticate to {}'.format(self.host))
+            logger.error('Failed to authenticate to %s', self.host)
+            if raise_on_error:
+                raise UltraSyncAuthentication(
+                    'Failed to authenticate to {}'.format(self.host))
             return False
 
         #
@@ -157,9 +161,12 @@ class UltraSync(UltraSyncConfig):
         match = re.search(
             r'function getSession\(\)[^"]+"(?P<session>[^"]+)".*',
             response, re.M)
-        if not match:
+        if not match or not match.group('session'):
             # No match and/or bad login
             logger.error('Failed to authenticate to {}'.format(self.host))
+            if raise_on_error:
+                raise UltraSyncAuthentication(
+                    'Failed to authenticate to {}'.format(self.host))
             return False
 
         # Store our session
@@ -184,6 +191,11 @@ class UltraSync(UltraSyncConfig):
             response, re.M)
         if not match:
             # No match and/or bad login
+            logger.error(
+                'Could not detect device details on %s', self.host)
+            if raise_on_error:
+                raise UltraSyncUnsupported(
+                    'Could not detect device details on {}'.format(self.host))
             return False
 
         # Store our path
@@ -211,8 +223,10 @@ class UltraSync(UltraSyncConfig):
             self.release = match.group('release')
 
         else:
-            logger.error(
-                'Unsupported vendor {}'.format(match.group('vendor')))
+            logger.error('Unsupported vendor %s', match.group('vendor'))
+            if raise_on_error:
+                raise UltraSyncUnsupported(
+                    'Unsupported vendor {}'.format(match.group('vendor')))
             return False
 
         logger.debug('Detected {} NX-595E, Web Interface v{}-{}'.format(
@@ -224,6 +238,9 @@ class UltraSync(UltraSyncConfig):
         if not self._areas(response=response) or not self._zones():
             # No match and/or bad login
             logger.error('Failed to authenticate to {}'.format(self.host))
+            if raise_on_error:
+                raise UltraSyncAuthentication(
+                    'Failed to authenticate to {}'.format(self.host))
             return False
 
         # Prepare output control (if supported)
@@ -231,9 +248,7 @@ class UltraSync(UltraSyncConfig):
 
         # Update our time reference
         self.__updated = datetime.now()
-
-        # We're good
-        return True if self.session_id else False
+        return True
 
     def logout(self):
         """
@@ -251,7 +266,7 @@ class UltraSync(UltraSyncConfig):
 
         # Perform a logout
         response = self.__get('/logout.cgi', rtype=HubResponseType.RAW)
-        if not response:
+        if response is None:
             logger.error('Failed to authenticate to {}'.format(self.host))
             return False
 
@@ -1626,6 +1641,11 @@ class UltraSync(UltraSyncConfig):
                 return False
             self._zbank = json.loads('[{}]'.format(match.group('states')))
 
+            # Handle situations where we don't have the correct number of
+            # entries in our _zbank (must match _zseq)
+            while len(self._zbank) < len(self._zsequence):
+                self._zbank.append('00' * 18)
+
         else:  # self.vendor is NX595EVendor.COMNAV
 
             #  var zoneStatus = new Array(new Array(0,0),new Array(0,0),...
@@ -1644,6 +1664,11 @@ class UltraSync(UltraSyncConfig):
 
             self._zbank = json.loads(
                 '[{}]'.format(','.join(['[{}]'.format(x) for x in match])))
+
+            # Handle situations where we don't have the correct number of
+            # entries in our _zbank (must match _zseq)
+            while len(self._zbank) < len(self._zsequence):
+                self._zbank.append(self._zbank[0])
 
         #
         # Get our Zone Names
@@ -1685,7 +1710,7 @@ class UltraSync(UltraSyncConfig):
         #
         if self.vendor is NX595EVendor.ZEROWIRE:
             # It looks like this in the zone.htm response:
-            #  var master = 1; # 1 if master, 0 if not
+            #  var ismaster = 1; # 1 if master, 0 if not
             match = re.search(
                 r'var ismaster\s*=\s*(?P<flag>[01]+).*', response, re.M)
             if not match:
@@ -1697,7 +1722,7 @@ class UltraSync(UltraSyncConfig):
             # Get our Installer Status
             #
             # It looks like this in the zone.htm response:
-            #  var installer = 1; # 1 if installer, 0 if not
+            #  var isinstaller = 1; # 1 if installer, 0 if not
             match = re.search(
                 r'var isinstaller\s*=\s*(?P<flag>[01]+).*', response, re.M)
             if not match:
