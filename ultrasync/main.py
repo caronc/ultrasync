@@ -2570,8 +2570,9 @@ class UltraSync(UltraSyncConfig):
 
         # Perform our Query
         response = self.__get('/user/seq.xml', rtype=HubResponseType.XML)
-        if not response:
+        if response is None or not len(response):
             return None
+
 
         perform_area_update = False
         perform_zone_update = False
