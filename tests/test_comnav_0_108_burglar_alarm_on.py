@@ -94,8 +94,14 @@ def test_comnav_0_108_active_burglary(mock_post):
     crobj.status_code = requests.codes.ok
     crobj.content = b''
 
+    # A History response object
+    hsobj = mock.Mock()
+    with open(join(ULTRASYNC_TEST_VAR_DIR, 'history.htm'), 'rb') as f:
+        hsobj.content = f.read()
+    hsobj.status_code = requests.codes.ok
+
     # Assign our response object to our mocked instance of requests
-    mock_post.side_effect = (arobj, zrobj, crobj)
+    mock_post.side_effect = (arobj, zrobj, crobj, hsobj)
 
     uobj = UltraSync()
 
