@@ -94,8 +94,14 @@ def test_comnav_0_108_zone_filter(mock_post):
     crobj.status_code = requests.codes.ok
     crobj.content = b''
 
+    # A History response object
+    hsobj = mock.Mock()
+    with open(join(ULTRASYNC_TEST_VAR_DIR, 'history.htm'), 'rb') as f:
+        hsobj.content = f.read()
+    hsobj.status_code = requests.codes.ok
+
     # Assign our response object to our mocked instance of requests
-    mock_post.side_effect = (arobj, zrobj, crobj)
+    mock_post.side_effect = (arobj, zrobj, crobj, hsobj)
 
     uobj = UltraSync()
 
@@ -125,13 +131,15 @@ def test_comnav_0_108_zone_filter(mock_post):
     assert len(uobj.zones) == 17
 
     # A call to login.cgi (which fetches area.html) and then zones.htm
-    assert mock_post.call_count == 3
+    assert mock_post.call_count == 4
     assert mock_post.call_args_list[0][0][0] == \
         'http://zerowire/login.cgi'
     assert mock_post.call_args_list[1][0][0] == \
         'http://zerowire/user/zones.htm'
     assert mock_post.call_args_list[2][0][0] == \
         'http://zerowire/user/outputs.htm'
+    assert mock_post.call_args_list[3][0][0] == \
+        'http://zerowire/user/history.htm'
 
     # Reset our mock object
     mock_post.reset_mock()
