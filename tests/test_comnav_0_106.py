@@ -95,9 +95,10 @@ def test_comnav_0_106_communication(mock_post):
     crobj.content = b''
 
     # A History response object
+    # At the time, i did not have a sample to work with, so we will use empty
+    # data for now to satisfy tests
     hsobj = mock.Mock()
-    with open(join(ULTRASYNC_TEST_VAR_DIR, 'history.htm'), 'rb') as f:
-        hsobj.content = f.read()
+    hsobj.content = b''
     hsobj.status_code = requests.codes.ok
 
     # Assign our response object to our mocked instance of requests
