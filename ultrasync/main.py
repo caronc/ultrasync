@@ -2570,7 +2570,7 @@ class UltraSync(UltraSyncConfig):
 
         # Perform our Query
         response = self.__get('/user/seq.xml', rtype=HubResponseType.XML)
-        if response is None or not len(response):
+        if not response:
             return None
 
 
