@@ -2143,7 +2143,7 @@ class UltraSync(UltraSyncConfig):
         if not self.session_id and not self.login():
             return False
 
-        logger.info('Retrieving initial History information.')
+        logger.debug('Retrieving initial History information.')
 
         # Perform our Query
         response = self.__get('/user/history.htm', rtype=HubResponseType.RAW)
@@ -2220,7 +2220,7 @@ class UltraSync(UltraSyncConfig):
         if not self.session_id and not self.login():
             return False
 
-        logger.info('Retrieving initial Output Control information.')
+        logger.debug('Retrieving initial Output Control information.')
 
         # Perform our Query
         response = self.__get('/user/outputs.htm', rtype=HubResponseType.RAW)
