@@ -119,7 +119,7 @@ class UltraSync(UltraSyncConfig):
         self._asequence = None
 
         # Our history gets populated after we connect
-        self.historyLatest = {}
+        self.historyData = {}
 
         # Our output controls get populated after we connect
         self.outputs = {}
@@ -720,7 +720,7 @@ class UltraSync(UltraSyncConfig):
             'zones': [z for z in self.zones.values()],
             'areas': [a for a in self.areas.values()],
             'outputs': [o for o in self.outputs.values()],
-            'history': [h for h in self.historyLatest.values()],
+            'historyData': [h for h in self.historyData.values()],
             'date': self.__updated.strftime('%Y-%m-%d %H:%M:%S'),
         }
 
@@ -2162,13 +2162,13 @@ class UltraSync(UltraSyncConfig):
 
         if not match:
             logger.warning("Failed to gather history data from response")
-            self.historyLatest = {}
+            self.historyData = {}
             return True
         lines = match.group(1).strip().splitlines()
 
         if len(lines) < 5:
             logger.warning("Unexpected history format, not enough lines")
-            self.historyLatest = {}
+            self.historyData = {}
             return True
 
         # Clean lines and extract parts
@@ -2193,8 +2193,8 @@ class UltraSync(UltraSyncConfig):
         except Exception as e:
                 logger.warning(f"Could not parse timestamp: {e}")
 
-         # Store history with index 1
-        self.historyLatest = {
+         # Store our history data:
+        self.historyData = {
                1: {
                    'action': action,
                    'area_name': area_name,
