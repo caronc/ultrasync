@@ -46,7 +46,7 @@ else:
 
 setup(
     name='ultrasync',
-    version='1.0.1',
+    version='1.0.2',
     description='Wrapper to XGen/XGen8/ComNav/Hills/Interlogix NX-595E/UltraSync '
                 'ZeroWire',
     license='MIT',
