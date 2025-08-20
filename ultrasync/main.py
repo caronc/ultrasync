@@ -28,6 +28,9 @@ import json
 import re
 import os
 import math
+import hmac
+import hashlib
+import base64
 import xml.etree.ElementTree as ET
 from xml.etree.ElementTree import ParseError
 from zipfile import ZipFile
@@ -130,24 +133,85 @@ class UltraSync(UltraSyncConfig):
         # Track the Panel URL path
         self.__panel_url_path = None
 
+    def get_signature(self, date, uri, serial_number):
+        try:
+            master_key = base64.b64decode(self.master_key)
+            ascii_cs = 'US-ASCII'
+            sha256_hmac = hmac.new(master_key, msg=date.encode(ascii_cs), digestmod=hashlib.sha256)
+            sha256_hmac = hmac.new(sha256_hmac.digest(), msg=uri.encode(ascii_cs), digestmod=hashlib.sha256)
+            sha256_hmac = hmac.new(sha256_hmac.digest(), msg=serial_number.encode(ascii_cs), digestmod=hashlib.sha256)
+
+            return sha256_hmac.hexdigest()
+        except Exception as e:
+            print(e)
+            return None
+
     def login(self):
         """
         Performs login to UltraSync (which then redirects to area.htm)
 
         """
-        # Our initialiation
+        # Our initialisation
         self.session_id = None
         self.__updated = None
+        # Check if we need to connect over the internet
+        if self._online:
+            date = datetime.now().strftime("%Y%m%dT%H%M%SZ")
+            signature = self.get_signature(date, '/xquery/1.0/relay.json', self.serial_number)
+            payload = {
+                'id': self.serial_number,
+                'passcode': self.passcode,
+                'apptype': self.apptype,
+                'appver': 2.25,
+                'date': date,
+                'signature': signature
+            }
 
-        payload = {
-            'lgname': self.user,
-            'lgpin': self.pin,
-        }
+            logger.info('Authenticating to {}'.format(self.host))
+            response = self.__get(
+                '/xquery/1.0/relay.json?lang=en-AU', payload=payload, method='POST',
+                rtype=HubResponseType.JSON, auth_on_fail=False)
+            if not response:
+                logger.error('Failed to authenticate to {}'.format(self.host))
+                return False
+            
+            # Check for any error messages in the response and stop execution here
+            if isinstance(response, dict) and "error" in response:
+                code = response["error"].get("code")
+                message = response["error"].get("message", "Unknown error")
+                logger.error(
+                    "Authentication failed (code {0}) from {1}: {2}".format(code, self.host, message)
+                )
+                return False
 
-        logger.info('Authenticating to {}'.format(self.host))
-        response = self.__get(
-            '/login.cgi', payload=payload,
-            rtype=HubResponseType.RAW, auth_on_fail=False)
+            # Create the payload for the request
+            payload = {
+                'id': self.serial_number,
+                'passcode': self.passcode,
+                'lgname': self.user,
+                'lgpin': self.pin,
+                'idtype': 'U',
+                'webkey': response['webkey']
+            }
+            self.host = response['relay_server']
+            response = self.__get(
+                '/login.cgi?apptype='+self.apptype+'&appver=2.25.0&lang=en-AU', payload=payload, method='POST',
+                rtype=HubResponseType.RAW, auth_on_fail=False)
+            if not response:
+                logger.error('Failed to authenticate to {}'.format(self.host))
+                return False
+
+        else:
+            # Local Connection
+            payload = {
+                'lgname': self.user,
+                'lgpin': self.pin,
+            }
+
+            logger.info('Authenticating to {}'.format(self.host))
+            response = self.__get(
+                '/login.cgi', payload=payload,
+                rtype=HubResponseType.RAW, auth_on_fail=False)
         if not response:
             logger.error('Failed to authenticate to {}'.format(self.host))
             return False

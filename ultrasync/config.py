@@ -43,9 +43,14 @@ class UltraSyncConfig(object):
 
     _user_agent = 'Mozilla/5.0 (X11; Fedora; Linux x86_64; rv:69.0) ' \
                   'Gecko/20100101 Firefox/69.0'
+    _online = False
+    _master_key = 'QY+6jk22xgoZC5YdKg5qBwOr3kaAbxXgXnKHAfHOvYwBw0iWHtf/MVRG/97Cx2Tt'
+    _serial_number = ''
+    _passcode = ''
+    _apptype = 'android-ultraconnect'
 
-    def __init__(self, pin=None, user=None, host=None, path=None,
-                 user_agent=None, verify=None, *args, **kwargs):
+    def __init__(self, pin=None, user=None, host=None, path=None, master_key=None, serial_number=None, passcode=None, apptype=None,
+                 user_agent=None, verify=None, online=None, *args, **kwargs):
         """
         Initializes the configuration object
         """
@@ -63,8 +68,18 @@ class UltraSyncConfig(object):
             'ULTRASYNC_HOST', UltraSyncConfig._host)
         self._verify = verify if verify is not None else os.environ.get(
             'ULTRASYNC_SSL_VERIFY', UltraSyncConfig._verify)
-        self._user_agent = \
-            user_agent if user_agent else UltraSyncConfig._user_agent
+        self._user_agent = user_agent if user_agent else os.environ.get(
+            'ULTRASYNC_USER_AGENT', UltraSyncConfig._user_agent)
+        self._online = online if online is not None else os.environ.get(
+            'ULTRASYNC_ONLINE', UltraSyncConfig._online)
+        self._master_key = master_key if master_key is not None else os.environ.get(
+            'ULTRASYNC_MASTER_KEY', UltraSyncConfig._master_key)
+        self._serial_number = serial_number if serial_number is not None else os.environ.get(
+            'ULTRASYNC_SERIAL_NUMBER', UltraSyncConfig._serial_number)
+        self._passcode = passcode if passcode is not None else os.environ.get(
+            'ULTRASYNC_PASSCODE', UltraSyncConfig._passcode)
+        self._apptype = apptype if apptype is not None else os.environ.get(
+            'ULTRASYNC_APPTYPE', UltraSyncConfig._apptype)
 
         if path and not self.load(path):
             raise AttributeError('Invalid path specified: {}'.format(path))
@@ -87,6 +102,8 @@ class UltraSyncConfig(object):
 
         # Ensure verify is of type boolean
         self._verify = self.parse_bool(self._verify, UltraSyncConfig._verify)
+        # Ensure online is of type boolean
+        self._online = self.parse_bool(self._online, UltraSyncConfig._online)
 
         return True
 
@@ -168,6 +185,10 @@ class UltraSyncConfig(object):
         Returns Alarm Panel Host
         """
         return self._host
+    
+    @host.setter
+    def host(self, new_host):
+        self._host = new_host
 
     @property
     def user(self):
@@ -198,6 +219,13 @@ class UltraSyncConfig(object):
         return self._user_agent
 
     @property
+    def online(self):
+        """
+        Determines if the connection is online or local
+        """
+        return self._online
+
+    @property
     def url(self):
         """
         Returns request URL
@@ -212,3 +240,31 @@ class UltraSyncConfig(object):
         Returns requests auth details
         """
         return self.__auth
+
+    @property
+    def master_key(self):
+        """
+        Returns requests auth details
+        """
+        return self._master_key
+
+    @property
+    def serial_number(self):
+        """
+        Returns requests auth details
+        """
+        return self._serial_number
+
+    @property
+    def passcode(self):
+        """
+        Returns requests auth details
+        """
+        return self._passcode
+
+    @property
+    def apptype(self):
+        """
+        Returns requests auth details
+        """
+        return self._apptype
