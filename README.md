@@ -133,3 +133,12 @@ You can also (optionally) set the following global variables to provide the equi
 ## Disclaimer
 
 This software was created by reverse engineering my own personal security system. All of this code was generated through trial and error since there is no documentation that I could find that explains the registers. If you can help out by filling in some of the blanks throughout the code base, I would be greatly appreciative of it! Alternatively [buying me a coffee](https://paypal.me/lead2gold?locale.x=en_US) greatly inspires me to continue improving the application.
+
+## Contribution Safety Policy
+
+- Do not submit code that bypasses authentication to third-party services, depends on leaked keys, or exploits vendor misconfigurations.
+- Remote features must use documented, official endpoints and per-account credentials legitimately issued to the user.
+- Do not include secrets in code, tests, logs, or screenshots. If you commit sensitive data, rewrite your history (`git filter-repo`) and force-push before opening a PR.
+- If you discover a vulnerability or exposed credential, use **Private vulnerability reporting** instead of a public PR.
+
+Maintainers may close PRs that violate this policy.
