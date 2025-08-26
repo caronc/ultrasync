@@ -4,19 +4,21 @@ This tool is designed to allow 'API' access through a CLI wrapper to several typ
  - Hills Ltd (Business defunct in 2023, now operating as Aritech (a division of Kidde Global Solutions))
  - United Technologies Corporation (Alarm division defunct in 2021)
 
-The tool can be leveraged by other scripts/integrations such as https://github.com/caronc/ha-ultrasync for integration into Home Automation systems.
+The tool can be leveraged by other scripts/integrations such as [HA UltraSync](https://github.com/caronc/ha-ultrasync) for integration into Home Automation systems.
 
 # Compatibility
 
 The tool is written to be compatible with the [Hills/Aritech](https://aritech.com.au/) NX-595E ComNav, [Interlogix](https://www.interlogix.com/index.html) xGen/xGen8 (such as NXG-8-Z-BO), and [ZeroWire](https://www.interlogix.com/index.html) UltraSync-based alarm solutions. It is possible that more systems are supported that utilise the UltraSync+ app and share similar code structure, however any not explicitly listed here are untested by the code author/contributors.
 
+**Note**:
 ComNav modules runinng firmware version P004000-12 and above disable access to programming menus for cybersecurity reasons. To enable programming menus permanently, turn on Feature Location 19 Option 6. With programming menus disabled, users will only be allowed access through remote/online login (over the internet). Compatibility for remote login cannot be added to this tool due to there being no public API available, and no official vendor support for this method outside of the UltraSync+ mobile app. Later model Aritech Reliance XR series alarm systems include a built-in IP module that allows local network access as it is not affected by the same vulnerabilities.
 
 [**ComNav Product Security Advisory**](https://www.corporate.carrier.com/Images/CARR-PSA-Hills-ComNav-002-1121_tcm558-149392.pdf)
 
 As the original manufacturer(s) are mostly defunct, new software development is generally not expected at the vendor level. Newer Aritech ATS alarm systems utilise the Advisor Advanced Pro mobile app instead of UltraSync+ and are unlikely to be supported by this tool.
 
-![ZeroWire Hub Image](https://raw.githubusercontent.com/caronc/ultrasync/master/static/zerowire_hub.jpeg)
+*UltraSync Hub*
+![ZeroWire Hub Image](https://raw.githubusercontent.com/caronc/ultrasync/master/static/zerowire_hub.jpeg "UltraSync Hub")
 
 [![Paypal](https://img.shields.io/badge/paypal-donate-green.svg)](https://paypal.me/lead2gold?locale.x=en_US)
 [![Follow](https://img.shields.io/twitter/follow/l2gnux)](https://twitter.com/l2gnux/)<br/>
