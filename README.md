@@ -1,9 +1,20 @@
-# NX-595E Output Control Fork
-This fork is designated to implementing the "Output Control" section of the NX-595E. The main objective is to enable communication with the outputs and ensure its proper implementation.
+# UltraSync Python Tool
 
-# NX-595E UltraSync Hub
+This tool is designed to allow 'API' access through a CLI wrapper to several types of alarm system IP modules that utilise the UltraSync+ mobile app. These modules are generally found in or can be added to systems produced by the below vendors:
+ - Hills Ltd (Business defunct in 2023, now operating as Aritech (a division of Kidde Global Solutions))
+ - United Technologies Corporation (Alarm division defunct in 2021)
 
-Compatible with both NX-595E [Hills](https://www.hills.com.au/) ComNav, xGen, xGen8 (such as [NXG-8-Z-BO](https://firesecurityproducts.com/en/product/intrusion/NXG_8_Z_BO/82651)), [Interlogix](https://www.interlogix.com/), and [ZeroWire](https://www.interlogix.com/intrusion/product/ultrasync-selfcontained-hub) UltraSync solutions.
+The tool can be leveraged by other scripts/integrations such as https://github.com/caronc/ha-ultrasync for integration into Home Automation systems.
+
+# Compatibility
+
+The tool is written to be compatible with the [Hills/Aritech](https://aritech.com.au/) NX-595E ComNav, [Interlogix](https://www.interlogix.com/index.html) xGen/xGen8 (such as NXG-8-Z-BO), and [ZeroWire](https://www.interlogix.com/index.html) UltraSync-based alarm solutions. It is possible that more systems are supported that utilise the UltraSync+ app and share similar code structure, however any not explicitly listed here are untested by the code author/contributors.
+
+ComNav modules runinng firmware version P004000-12 and above disable access to programming menus for cybersecurity reasons. To enable programming menus permanently, turn on Feature Location 19 Option 6. With programming menus disabled, users will only be allowed access through remote/online login (over the internet). Compatibility for remote login cannot be added to this tool due to there being no public API available, and no official vendor support for this method outside of the UltraSync+ mobile app. Later model Aritech Reliance XR series alarm systems include a built-in IP module that allows local network access as it is not affected by the same vulnerabilities.
+
+[**ComNav Product Security Advisory**](https://www.corporate.carrier.com/Images/CARR-PSA-Hills-ComNav-002-1121_tcm558-149392.pdf)
+
+As the original manufacturer(s) are mostly defunct, new software development is generally not expected at the vendor level. Newer Aritech ATS alarm systems utilise the Advisor Advanced Pro mobile app instead of UltraSync+ and are unlikely to be supported by this tool.
 
 ![ZeroWire Hub Image](https://raw.githubusercontent.com/caronc/ultrasync/master/static/zerowire_hub.jpeg)
 
@@ -24,25 +35,25 @@ Compatible with both NX-595E [Hills](https://www.hills.com.au/) ComNav, xGen, xG
    ```
 
 2. Create a configuration file that identifies:
-   1. The hostname or IP address of the ComNav/ZeroWire hub you've got setup on some the network.
-   1. Your ComNav/ZeroWire login User ID.
-   1. Your ComNav/ZeroWire login pin.
+   1. The hostname or IP address of the alarm system on your local network.
+   1. Your alarm system login User ID (case-sensitive)
+   1. Your alarm system login pin.
 
-   **Note**: You can only be logged into the ComNav/ZeroWire hub with the same user *once*; a subsequent login with the same user logs out the other. Since this tool/software actively polls and maintains a login session to your Hub, it can prevent you from being able to log into at the same time elsewhere (via it's website).  **It is strongly recommended that you create a second user account on your Hub dedicated to just this service.**
+   **Note**: You can generally only be logged into the alarm system with the same user *once*; a subsequent login with the same user logs out the other. Since this tool actively polls and maintains a login session to your system, it can prevent you from being able to log into at the same time elsewhere (via it's website).  **It is strongly recommended that you create a second user account on your system dedicated to just this service.**
 
    ```yaml
    # An example of what would be found in your configuration file:
    # Use hashtags/pound symbols (#) to optionally add comments
    # Syntax is simply <key>: <value>
    #
-   # You must specify a ip/hostname, user, and pin
+   # For local network login you must specify an ip/hostname, user, and pin
    #
    host: 192.168.0.30
-   user: My Username
+   user: My Username (case-sensitive)
    pin: 1234
    ```
 
-3. Use the **--scene** (**-s**) to set your security system's alarm scene.  The possible options are: `disarm`, `away`, and `stay`.
+3. Use the **--scene** (**-s**) to set your security system's alarm scene.  The possible options are: `disarm`, `away`, `stay`, `fire`, `medical`, and `panic`. The latter 3 are only available for NX-595E currently.
 
    ```bash
    # By default if no --config= (-c) is specified, one will be automatically
@@ -63,6 +74,15 @@ Compatible with both NX-595E [Hills](https://www.hills.com.au/) ComNav, xGen, xG
 
    # Arm your security system and only activate your perimeter sensors:
    ultrasync --scene stay
+   
+   # Trigger the fire alarm (ComNav Only):
+   ultrasync --scene fire
+   
+   # Trigger the medical alarm (ComNav Only):
+   ultrasync --scene medical
+   
+   # Trigger the panic alarm (ComNav Only):
+   ultrasync --scene panic
    ```
 
 ## What Else Can It Do?
@@ -85,7 +105,7 @@ Compatible with both NX-595E [Hills](https://www.hills.com.au/) ComNav, xGen, xG
 - You can perform a dump of all of the web based files (*that I've found to be useful so far*) to disk.  This makes troubleshooting much easier.
 
   ```bash
-  # Extracts information from your UltraSync Hub that can be
+  # Extracts information from your system that can be
   # incredibly useful in debugging and/or adding enhancements
   # later on:
   ultrasync --debug-dump
@@ -128,17 +148,8 @@ You can also (optionally) set the following global variables to provide the equi
 | **ULTRASYNC_PIN** | Provides the `pin` variable to the library
 | **ULTRASYNC_USER** | Provides the `user` variable to the library
 | **ULTRASYNC_HOST** | Provides the `host` variable to the library
-| **ULTRASYNC_SSL_VERIFY** | Provides the `verify` variable to the library
+| **ULTRASYNC_SSL_VERIFY** | Provides the `verify` variable to the library (optional, defaults to yes if not set)
 
 ## Disclaimer
 
-This software was created by reverse engineering my own personal security system. All of this code was generated through trial and error since there is no documentation that I could find that explains the registers. If you can help out by filling in some of the blanks throughout the code base, I would be greatly appreciative of it! Alternatively [buying me a coffee](https://paypal.me/lead2gold?locale.x=en_US) greatly inspires me to continue improving the application.
-
-## Contribution Safety Policy
-
-- Do not submit code that bypasses authentication to third-party services, depends on leaked keys, or exploits vendor misconfigurations.
-- Remote features must use documented, official endpoints and per-account credentials legitimately issued to the user.
-- Do not include secrets in code, tests, logs, or screenshots. If you commit sensitive data, rewrite your history (`git filter-repo`) and force-push before opening a PR.
-- If you discover a vulnerability or exposed credential, use **Private vulnerability reporting** instead of a public PR.
-
-Maintainers may close PRs that violate this policy.
+This tool was created through reverse engineering and has been expanded through crowdsourced data. All of this code was generated through trial and error since there is no official documentation available that explains the registers. If you can help out by filling in some of the blanks throughout the code base, I would be greatly appreciative of it! Alternatively [buying me a coffee](https://paypal.me/lead2gold?locale.x=en_US) greatly inspires me to continue improving the application.
