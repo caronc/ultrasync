@@ -1297,9 +1297,13 @@ class UltraSync(UltraSyncConfig):
             # Priority, the lower, the higher it is; 5 being the lowest
             priority = 5
 
-            # prepare ourselves a virtual states for reference
-            vbank = [int(self._zbank[s][idx:idx + 2], 16) & mask
-                     for s in range(0, 18)]
+            # prepare ourselves a virtual states for reference. Some xGen
+            # firmware returns fewer state banks than ZeroWire panels; treat
+            # missing banks as inactive instead of failing during login.
+            vbank = [
+                int(self._zbank[s][idx:idx + 2] or '0', 16) & mask
+                if s < len(self._zbank) else 0
+                for s in range(0, 18)]
 
             # Update our zone virtual bank
             self._zvbank[bank] = ''.join(
