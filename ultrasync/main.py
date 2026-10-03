@@ -451,12 +451,14 @@ class UltraSync(UltraSyncConfig):
                         progress_track += progress_ratio
 
         else:
+            # Create our dump directory once; every captured page goes in it
+            os.makedirs(path, mode=mode, exist_ok=True)
+
             for to_file, kwargs in urls.items():
                 response = self.__get(rtype=HubResponseType.RAW, **kwargs)
                 if not response:
                     continue
 
-                os.mkdir(path, mode=mode)
                 with open(os.path.join(path, to_file), 'w',
                           encoding=self.panel_encoding) as fp:
                     # Write our content to disk
@@ -470,7 +472,10 @@ class UltraSync(UltraSyncConfig):
                         progress.update(progress_ratio)
                         progress_track += progress_ratio
 
-        progress.update(100.001 - progress_track)
+        if progress:
+            # Fill whatever is left of the progress bar
+            progress.update(100.001 - progress_track)
+
         return
 
     def set(self, area=1, state=AlarmScene.DISARMED):

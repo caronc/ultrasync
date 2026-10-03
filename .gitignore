@@ -1,9 +1,26 @@
-.pyc
-__pycache__
+# Python bytecode
+*.py[cod]
+__pycache__/
+
+# Test, coverage and tox output
+.tox/
+.pytest_cache/
 .coverage
+.coverage.*
+coverage.xml
+htmlcov/
 
 # Created during wheel builds
 build/
 dist/
-ultrasync.egg-info/
+*.egg-info/
 .eggs/
+
+# Local virtual environments
+.venv/
+venv/
+
+# Panel captures from "ultrasync --debug-dump"; these can hold personal
+# details, so they must never be committed by accident
+*.ultrasync-dump
+*.ultrasync-dump.*

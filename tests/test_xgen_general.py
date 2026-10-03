@@ -195,6 +195,7 @@ def test_xgen_general_communication(mock_post):
         'http://zerowire/user/seq.json'
     assert mock_post.call_args_list[1][0][0] == \
         'http://zerowire/user/zstate.json'
+
     assert mock_post.call_args_list[2][0][0] == \
         'http://zerowire/user/status.json'
 
@@ -237,3 +238,49 @@ def test_xgen_general_communication(mock_post):
         'http://zerowire/user/seq.json'
     assert mock_post.call_args_list[1][0][0] == \
         'http://zerowire/user/zstate.json'
+
+
+@mock.patch('requests.Session.post')
+def test_xgen_short_zone_state_banks(mock_post):
+    """
+    Test xGen panels that return fewer zone state banks than ZeroWire panels.
+
+    """
+
+    # A area response object
+    arobj = mock.Mock()
+
+    # Simulate a valid login return
+    with open(join(ULTRASYNC_TEST_VAR_DIR, 'area.htm'), 'rb') as f:
+        arobj.content = f.read()
+    arobj.status_code = requests.codes.ok
+
+    # A zone response object
+    zrobj = mock.Mock()
+
+    # Simulate a valid login return with a shortened zoneStatus array
+    with open(join(ULTRASYNC_TEST_VAR_DIR, 'zones.htm'), 'rb') as f:
+        zrobj.content = f.read().replace(
+            b',"000000","000000","000000"',
+            b'',
+            1,
+        )
+    zrobj.status_code = requests.codes.ok
+
+    # Assign our response object to our mocked instance of requests
+    mock_post.side_effect = (arobj, zrobj)
+
+    uobj = UltraSync()
+
+    # Perform a login which under the hood queries both area.htm and zones.htm
+    # (in that order)
+    assert uobj.login()
+    assert uobj.vendor is NX595EVendor.XGEN
+    assert len(uobj._zbank) == 15
+    assert isinstance(uobj.zones, dict)
+    assert len(uobj.zones) == 15
+
+    for bank, zone in uobj.zones.items():
+        assert zone['bank'] == bank
+        assert zone['sequence'] == 1
+        assert zone['can_bypass'] is True

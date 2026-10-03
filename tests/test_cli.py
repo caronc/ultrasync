@@ -191,3 +191,133 @@ def test_apprise_cli_windows_env(mock_system):
 
     # Reload our module
     reload(cli)
+
+
+@mock.patch('ultrasync.cli.UltraSync')
+def test_cli_actions(mock_usync, tmpdir):
+    """
+    Test UltraSync CLI scene, bypass and output actions
+
+    """
+    # Create a config file
+    config = tmpdir.join("config")
+    config.write('host: ultrasync.example.com\npin: 1234\nuser: Admin\n')
+
+    # Every panel call works by default
+    usync = mock_usync.return_value
+    usync.load.return_value = True
+    usync.set_alarm.return_value = True
+    usync.set_zone_bypass.return_value = True
+    usync.set_output_control.return_value = True
+
+    runner = CliRunner()
+    base = ['--config', str(config)]
+
+    # Arm one area
+    result = runner.invoke(cli.main, base + ['--scene', 'away', '-a', '1'])
+    assert result.exit_code == 0
+    usync.set_alarm.assert_called_with(areas=1, state='away')
+
+    # An unknown scene never reaches the panel
+    result = runner.invoke(cli.main, base + ['--scene', 'party'])
+    assert result.exit_code == 1
+
+    # Bypass a zone
+    result = runner.invoke(cli.main, base + ['--bypass', '1', '--zone', '3'])
+    assert result.exit_code == 0
+    usync.set_zone_bypass.assert_called_with(zone=3, state=True)
+
+    # Switch an output on
+    result = runner.invoke(
+        cli.main, base + ['--output', '1', '--switch', '1'])
+    assert result.exit_code == 0
+    usync.set_output_control.assert_called_with(output=1, state=1)
+
+    # Only 0 and 1 are valid switch states
+    result = runner.invoke(
+        cli.main, base + ['--output', '1', '--switch', '2'])
+    assert result.exit_code == 1
+
+    # The panel refuses each action
+    usync.set_alarm.return_value = False
+    usync.set_zone_bypass.return_value = False
+    usync.set_output_control.return_value = False
+
+    result = runner.invoke(cli.main, base + ['--scene', 'away'])
+    assert result.exit_code == 1
+
+    result = runner.invoke(cli.main, base + ['--bypass', '0', '--zone', '3'])
+    assert result.exit_code == 1
+
+    result = runner.invoke(
+        cli.main, base + ['--output', '1', '--switch', '0'])
+    assert result.exit_code == 1
+
+    # No action at all prints the help
+    result = runner.invoke(cli.main, base)
+    assert result.exit_code == 1
+
+    # A config file that can not be loaded
+    usync.load.return_value = False
+    result = runner.invoke(cli.main, base + ['--details'])
+    assert result.exit_code == 1
+
+
+@mock.patch('ultrasync.cli.UltraSync')
+def test_cli_debug_dump(mock_usync, tmpdir):
+    """
+    Test UltraSync CLI debug dumps
+
+    """
+    config = tmpdir.join("config")
+    config.write('host: ultrasync.example.com\n')
+    usync = mock_usync.return_value
+    usync.load.return_value = True
+
+    runner = CliRunner()
+
+    # A regular dump
+    result = runner.invoke(
+        cli.main, ['--config', str(config), '--debug-dump'])
+    assert result.exit_code == 0
+    assert usync.debug_dump.call_args[1]['full'] is False
+    assert usync.debug_dump.call_args[1]['compress'] is True
+
+    # A full dump
+    result = runner.invoke(
+        cli.main, ['--config', str(config), '--full-debug-dump'])
+    assert result.exit_code == 0
+    assert usync.debug_dump.call_args[1]['full'] is True
+
+
+@mock.patch('ultrasync.cli.time.sleep')
+@mock.patch('ultrasync.cli.UltraSync')
+def test_cli_watch(mock_usync, mock_sleep, tmpdir):
+    """
+    Test UltraSync CLI watch mode
+
+    """
+    config = tmpdir.join("config")
+    config.write('host: ultrasync.example.com\n')
+
+    zone = {'bank': 0, 'sequence': 1, 'name': 'Front Door',
+            'status': 'Ready'}
+    area = {'bank': 0, 'sequence': 1, 'name': 'Area 1', 'status': 'Ready'}
+
+    usync = mock_usync.return_value
+    usync.load.return_value = True
+    usync.zones = {0: zone}
+
+    # Two polls with the same state, then the panel stops answering
+    usync.details.side_effect = (
+        {'areas': [area]}, {'areas': [area]}, {})
+
+    runner = CliRunner()
+    result = runner.invoke(cli.main, ['--config', str(config), '--watch'])
+    assert result.exit_code == 0
+
+    # Each change is printed once, followed by a divider
+    assert result.output.count('Front Door') == 1
+    assert result.output.count('Area 1') == 1
+    assert result.output.count('---') == 1
+    assert mock_sleep.call_count == 2
