@@ -24,7 +24,7 @@
 # THE SOFTWARE.
 
 __title__ = 'ultrasync'
-__version__ = '1.0.4'
+__version__ = '1.0.5'
 __author__ = 'Chris Caron'
 __license__ = 'MIT'
 __copywrite__ = 'Copyright (C) 2026 Chris Caron <lead2gold@gmail.com>'
