@@ -104,6 +104,15 @@ As the original manufacturer(s) are mostly defunct, new software development is 
   ultrasync --details
   ```
 
+  Each area includes an `arm_state` of `away`, `stay` or `disarm`. Use it when you only want to know whether the alarm is armed. The `status` of an area is what the keypad would show, so it can also be something like `Burglar Alarm`, `Exit Delay 1` or `Not Ready`.
+
+  ```bash
+  # Print the arm state of the first area (requires jq)
+  ultrasync --details | jq -r '.areas[0].arm_state'
+  ```
+
+  `--details` only writes JSON to the screen (messages go to stderr), and exits with an error code if the panel could not be read.
+
 - You can perform a dump of all of the web based files (*that I've found to be useful so far*) to disk.  This makes troubleshooting much easier.
 
   ```bash

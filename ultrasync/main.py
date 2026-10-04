@@ -871,7 +871,19 @@ class UltraSync(UltraSyncConfig):
         # Xgen8 and Xgen share the same area processing
         vendor = self.vendor \
             if self.vendor != NX595EVendor.XGEN8 else NX595EVendor.XGEN
-        return getattr(self, '{}_process_areas'.format(vendor))()
+        result = getattr(self, '{}_process_areas'.format(vendor))()
+
+        # Add a simple arm mode to each area (away, stay or disarm).  The
+        # status text can't be used for this because alarms, delays and
+        # "Not Ready" replace it.  The panel's own status.js checks the
+        # partial (stay) flag before the armed (away) flag, so we do too.
+        for area in self.areas.values():
+            states = area.get('states', {})
+            area['arm_state'] = AlarmScene.STAY if states.get('partial') \
+                else AlarmScene.AWAY if states.get('armed') \
+                else AlarmScene.DISARMED
+
+        return result
 
     def xgen_process_areas(self):
         """
