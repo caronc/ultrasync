@@ -23,10 +23,12 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import re
 from os.path import join
 from os.path import dirname
 from unittest import mock
 
+import pytest
 import requests
 
 from ultrasync import UltraSync
@@ -239,3 +241,96 @@ def test_comnav_missing_area_values(mock_post):
     assert uobj.areas[0]['status'] == 'Ready'
     assert uobj.areas[1]['status'] == 'Ready'
     assert uobj.areas[8]['bank_state'] == [0] * 17
+
+
+def _two_area_login(vendor_dir, first_name):
+    """Return a logged in single-area capture with Area 2 added, both ready."""
+    var_dir = join(dirname(__file__), 'var', *vendor_dir.split('/'))
+    area = _resp(path=join(var_dir, 'area.htm'))
+    area.content = re.sub(
+        rb'areaStatus = \["0[0-9]', b'areaStatus = ["03', area.content
+    ).replace(
+        'areaNames = ["{}","%21",'.format(first_name).encode(),
+        'areaNames = ["{}","Area%202",'.format(first_name).encode())
+
+    with mock.patch('requests.Session.post', side_effect=(
+            area, _resp(path=join(var_dir, 'zones.htm')))):
+        uobj = UltraSync()
+        assert uobj.login() is True
+
+    assert uobj.areas[0]['status'] == 'Ready'
+    assert uobj.areas[1]['status'] == 'Ready'
+    return uobj, var_dir
+
+
+@pytest.mark.parametrize('vendor_dir,first_name', (
+    ('zerowire/general', ''),
+    ('xgen8/nxg8zbo', 'Area%201'),
+))
+@mock.patch('requests.Session.post')
+def test_second_area_updates(mock_post, vendor_dir, first_name):
+    """ZeroWire and xGen8 panels apply changes to their second area."""
+    uobj, var_dir = _two_area_login(vendor_dir, first_name)
+
+    # The captured sequence moves a zone counter and the area counter.
+    # In the area reply only Area 1 is ready (01), so Area 2 is not.
+    status = _resp(path=join(var_dir, 'status.json'))
+    status.content = re.sub(
+        rb'"bankstates":"0[0-9]', b'"bankstates":"01', status.content)
+    mock_post.side_effect = (
+        _resp(path=join(var_dir, 'seq.json')),
+        _resp(path=join(var_dir, 'zstate.json')),
+        status)
+    assert uobj.details(max_age_sec=0)
+    assert uobj.areas[0]['status'] == 'Ready'
+    assert uobj.areas[1]['status'] == 'Not Ready'
+
+
+@pytest.mark.parametrize('vendor_dir,first_name', (
+    ('zerowire/general', ''),
+    ('xgen/general', 'Area 1'),
+    ('xgen8/nxg8zbo', 'Area%201'),
+))
+def test_missing_area_bank_string(vendor_dir, first_name):
+    """Areas 9 and up without a bank string start neutral, not copied."""
+    # Areas 1, 2, 9 and 10 are named, but only bank 0's string is sent,
+    # with Areas 1 and 2 ready (03)
+    var_dir = join(dirname(__file__), 'var', *vendor_dir.split('/'))
+    area = _resp(path=join(var_dir, 'area.htm'))
+    area.content = re.sub(
+        rb'areaStatus = \["0[0-9]', b'areaStatus = ["03', area.content)
+    area.content = re.sub(
+        rb'areaNames = \[[^\]]*\]',
+        'areaNames = ["{}","Area%202","!","!","!","!","!","!",'
+        '"Area%209","Area%2010"]'.format(first_name).encode(),
+        area.content)
+
+    with mock.patch('requests.Session.post', side_effect=(
+            area, _resp(path=join(var_dir, 'zones.htm')))):
+        uobj = UltraSync()
+        assert uobj.login() is True
+
+    # Areas 1 and 2 keep their real state
+    assert uobj.areas[0]['status'] == 'Ready'
+    assert uobj.areas[1]['status'] == 'Ready'
+
+    # Areas 9 and 10 have nothing set, instead of mirroring Areas 1 and 2
+    for area_no in (8, 9):
+        assert uobj.areas[area_no]['bank_state'] == '0' * 80
+        assert uobj.areas[area_no]['status'] == 'Not Ready'
+        assert uobj.areas[area_no]['arm_state'] == 'disarm'
+
+
+@pytest.mark.parametrize('stat0', (b'<stat0/>', b'<stat0>abc</stat0>'))
+@mock.patch('requests.Session.post')
+def test_comnav_bad_status_values(mock_post, stat0):
+    """Empty or non-numeric ComNav status values leave the areas as is."""
+    uobj = _comnav(mock_post)
+    before = {no: dict(area) for no, area in uobj.areas.items()}
+
+    mock_post.side_effect = (
+        _resp(COMNAV_AREA_SEQ),
+        _comnav_status(b'<stat0>0</stat0>', stat0))
+    assert uobj.details(max_age_sec=0)
+    assert {no: area['bank_state'] for no, area in uobj.areas.items()} == \
+        {no: area['bank_state'] for no, area in before.items()}

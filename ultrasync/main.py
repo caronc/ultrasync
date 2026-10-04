@@ -66,7 +66,8 @@ class UltraSync(UltraSyncConfig):
     # Tracks our Maximum Sequence Count
     max_sequence_count = 12
 
-    # Tracks our Maximum Area Count
+    # The number of area slots we always prepare (one area bank).  Panels
+    # that report more areas than this are still read in full.
     max_area_count = 8
 
     panel_encoding = 'utf-8'
@@ -815,7 +816,8 @@ class UltraSync(UltraSyncConfig):
         # ComNav entries looks like this:
         #  var areaStatus = new Array(0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0);
         #
-        # Every chunk of 17 bank states represents 1 area
+        # Every chunk of 17 ComNav values is one area bank, which covers a
+        # group of 8 areas (one bit per area)
         match = re.search(
             r'var areaStatus\s*=\s*'
             r'((new\s+)?Array)?[\[(](?P<states>[^\])]+)[\])];.*',
@@ -861,10 +863,11 @@ class UltraSync(UltraSyncConfig):
                 # A group the panel sent no values for has nothing set
                 return state if len(state) == 17 else [0] * 17
 
-            # The others send one string per group of 8 areas; fall back to
-            # the first one if the panel didn't send this group's string
+            # The others send one hex string per group of 8 areas.  A group
+            # the panel sent no string for has nothing set, the same as
+            # ComNav, rather than copying another group's areas.
             return bank_states[group] \
-                if group < len(bank_states) else bank_states[0]
+                if group < len(bank_states) else '0' * len(bank_states[0])
 
         # Store our Areas ('%21' == '!'; these are un-used areas)
         self.areas = \
@@ -1850,7 +1853,7 @@ class UltraSync(UltraSyncConfig):
 
     def _xgen_area_status_update(self, bank=0):
         """
-        Performs a area status check for the Interlogix ZeroWire Hub
+        Performs a area status check for the Interlogix xGen Hub
 
         A status response could look like this:
         {
@@ -1901,7 +1904,7 @@ class UltraSync(UltraSyncConfig):
 
     def _xgen8_area_status_update(self, bank=0):
         """
-        Performs a area status check for the Interlogix ZeroWire Hub
+        Performs a area status check for the Interlogix xGen8 Hub
 
         A status response could look like this:
         {
@@ -2018,8 +2021,9 @@ class UltraSync(UltraSyncConfig):
             bank_state = [int(response.find('stat{}'.format(x)).text)
                           for x in range(0, 17)]
 
-        except AttributeError:
-            # <statX> stanza was not found
+        except (AttributeError, TypeError, ValueError):
+            # A <statX> stanza was missing, empty or not a number; keep the
+            # areas as they were rather than storing a broken state
             return None
 
         self._store_area_bank_state(bank, bank_state)
@@ -2076,7 +2080,7 @@ class UltraSync(UltraSyncConfig):
 
     def _xgen_zone_status_update(self, bank=0):
         """
-        Performs a zone status check for the Xgen Zerowire Hub
+        Performs a zone status check for the Interlogix xGen Hub
 
         A status response could look like this:
         {
@@ -2118,7 +2122,7 @@ class UltraSync(UltraSyncConfig):
 
     def _xgen8_zone_status_update(self, bank=0):
         """
-        Performs a zone status check for the Xgen8 Zerowire Hub
+        Performs a zone status check for the Interlogix xGen8 Hub
 
         A status response could look like this:
         {
@@ -2393,7 +2397,8 @@ class UltraSync(UltraSyncConfig):
         remain unchanged.
 
         If a sequence value is changed, the index of the 'area' is the bank
-        that was updated.... so if index 0 was updated, then Area 1 changed.
+        that was updated.  Each area bank covers a group of 8 areas, so if
+        index 0 was updated, then something in Areas 1 to 8 changed.
         It is up to the user to call for an _area_status_update() with the
         respected index that needs updating.
 
@@ -2467,7 +2472,8 @@ class UltraSync(UltraSyncConfig):
         remain unchanged.
 
         If a sequence value is changed, the index of the 'area' is the bank
-        that was updated.... so if index 0 was updated, then Area 1 changed.
+        that was updated.  Each area bank covers a group of 8 areas, so if
+        index 0 was updated, then something in Areas 1 to 8 changed.
         It is up to the user to call for an _area_status_update() with the
         respected index that needs updating.
 
@@ -2548,7 +2554,8 @@ class UltraSync(UltraSyncConfig):
         remain unchanged.
 
         If a sequence value is changed, the index of the 'area' is the bank
-        that was updated.... so if index 0 was updated, then Area 1 changed.
+        that was updated.  Each area bank covers a group of 8 areas, so if
+        index 0 was updated, then something in Areas 1 to 8 changed.
         It is up to the user to call for an _area_status_update() with the
         respected index that needs updating.
 
@@ -2629,7 +2636,8 @@ class UltraSync(UltraSyncConfig):
         remain unchanged.
 
         If a sequence value is changed, the index of the 'area' is the bank
-        that was updated.... so if index 0 was updated, then Area 1 changed.
+        that was updated.  Each area bank covers a group of 8 areas, so if
+        index 0 was updated, then something in Areas 1 to 8 changed.
         It is up to the user to call for an _area_status_update() with the
         respected index that needs updating.
 
