@@ -849,15 +849,29 @@ class UltraSync(UltraSyncConfig):
             [0] * (UltraSync.max_sequence_count - len(self._asequence)))
         area_names.extend(['!'] * (UltraSync.max_area_count - len(area_names)))
 
+        def area_bank_state(x):
+            # Each group of 8 areas has its own bank state (bank 0 is areas
+            # 1 to 8), so panels with more than 8 areas read the right one
+            group = math.floor(x / 8)
+
+            if self.vendor is NX595EVendor.COMNAV:
+                # ComNav sends 17 values for each group of 8 areas
+                state = bank_states[group * 17:(group * 17) + 17]
+
+                # A group the panel sent no values for has nothing set
+                return state if len(state) == 17 else [0] * 17
+
+            # The others send one string per group of 8 areas; fall back to
+            # the first one if the panel didn't send this group's string
+            return bank_states[group] \
+                if group < len(bank_states) else bank_states[0]
+
         # Store our Areas ('%21' == '!'; these are un-used areas)
         self.areas = \
             {x: {'name': unquote(y).strip()
                  if unquote(y).strip() else 'Area {}'.format(x + 1),
                  'bank': x,
-                 'bank_state': bank_states[math.floor(x / 8) * 17:
-                                           (math.floor(x / 8) * 17) + 17]
-                 if self.vendor is NX595EVendor.COMNAV
-                 else bank_states[0]}
+                 'bank_state': area_bank_state(x)}
 
              for x, y in enumerate(area_names)
              if y != '%21' and y != '!'}
@@ -1772,6 +1786,17 @@ class UltraSync(UltraSyncConfig):
         return getattr(self, '_{}_area_status_update'
                              .format(self.vendor))(bank=bank)
 
+    def _store_area_bank_state(self, bank, bank_state):
+        """
+        Stores a new area bank state on every area that the bank covers
+        """
+        # Each area bank holds the state of a group of 8 areas (bank 0 is
+        # areas 1 to 8), one bit per area.  The panel's own status.js
+        # works the same way, so every area in the group gets the update.
+        for area_no, area in self.areas.items():
+            if math.floor(area_no / 8) == bank:
+                area['bank_state'] = bank_state
+
     def _zerowire_area_status_update(self, bank=0):
         """
         Performs a area status check for the Interlogix ZeroWire Hub
@@ -1815,7 +1840,7 @@ class UltraSync(UltraSyncConfig):
             [unquote(e).strip() for e in response.get('system', [])]
 
         # Update our bank states
-        self.areas[bank]['bank_state'] = response['bankstates']
+        self._store_area_bank_state(bank, response['bankstates'])
 
         # Convert Hex time to Local Date Time
         response['time'] = datetime.fromtimestamp(
@@ -1866,7 +1891,7 @@ class UltraSync(UltraSyncConfig):
             [unquote(e).strip() for e in response.get('system', [])]
 
         # Update our bank states
-        self.areas[bank]['bank_state'] = response['bankstates']
+        self._store_area_bank_state(bank, response['bankstates'])
 
         # Convert Hex time to Local Date Time
         response['time'] = datetime.fromtimestamp(
@@ -1922,7 +1947,7 @@ class UltraSync(UltraSyncConfig):
             [unquote(e).strip() for e in response.get('system', [])]
 
         # Update our bank states
-        self.areas[bank]['bank_state'] = response['bankstates']
+        self._store_area_bank_state(bank, response['bankstates'])
 
         # Convert Hex time to Local Date Time
         response['time'] = datetime.fromtimestamp(
@@ -1990,14 +2015,14 @@ class UltraSync(UltraSyncConfig):
             self.__extra_area_status = []
 
         try:
-            self.areas[bank]['bank_state'] = \
-                [int(response.find('stat{}'.format(x)).text)
-                 for x in range(0, 17)]
+            bank_state = [int(response.find('stat{}'.format(x)).text)
+                          for x in range(0, 17)]
 
         except AttributeError:
             # <statX> stanza was not found
             return None
 
+        self._store_area_bank_state(bank, bank_state)
         return response
 
     def _zone_status_update(self, bank=0):
