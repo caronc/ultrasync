@@ -249,14 +249,40 @@ class UltraSync(UltraSyncConfig):
             return True
 
         logger.info('Graceful log off from {}'.format(self.host))
+
+        # The panel needs to be told which session is ending
+        payload = {
+            'sess': self.session_id,
+        }
+
         # Reset our variables reguardless if we're successfully able to log
         # out or not
         self.session_id = None
 
-        # Perform a logout
-        response = self.__get('/logout.cgi', rtype=HubResponseType.RAW)
-        if not response:
-            logger.error('Failed to authenticate to {}'.format(self.host))
+        # Prepare our headers the same way the panel's own page would
+        headers = {
+            'Referer': 'http://{}/login.htm'.format(self.host),
+            'User-Agent': self.user_agent
+        }
+
+        # Perform a logout.  This is sent directly (not through __get) so a
+        # failure can never log us back in and open yet another session.
+        try:
+            request = self.session.post(
+                '{}/logout.cgi'.format(self.url), data=payload,
+                auth=self.auth, headers=headers, verify=self.verify,
+                timeout=self.timeout, allow_redirects=False)
+
+        except requests.exceptions.RequestException as e:
+            # The session will simply expire on the panel by itself
+            logger.warning('Failed to log off from {}'.format(self.host))
+            logger.debug('Log off exception: {}'.format(e))
+            return False
+
+        # The panel either answers or sends us back to its login page
+        if request.status_code not in (
+                requests.codes.ok, requests.codes.found):
+            logger.warning('Failed to log off from {}'.format(self.host))
             return False
 
         return True
