@@ -226,3 +226,52 @@ def test_comnav_history_formats(mock_post):
         assert uobj.history() is True
 
     assert uobj.history_data[1]['timestamp'] == '2025-12-15T08:30:00'
+
+
+def _login(vendor_dir, area=None):
+    """Return a logged in panel, optionally with its area page replaced."""
+    # Each panel type is read from its own captured pages
+    var_dir = join(dirname(__file__), 'var', *vendor_dir.split('/'))
+    area_resp = _resp(path=join(var_dir, 'area.htm'))
+    if area:
+        area_resp.content = area(area_resp.content)
+
+    replies = (area_resp, _resp(path=join(var_dir, 'zones.htm')))
+    if vendor_dir.startswith(NX595EVendor.COMNAV):
+        # ComNav also reads its outputs and history during login
+        replies += (_resp(), _resp())
+
+    with mock.patch('requests.Session.post', side_effect=replies):
+        uobj = UltraSync()
+        assert uobj.login() is True
+
+    return uobj
+
+
+def test_area_arm_state():
+    """Each area reports whether it is armed away, armed stay or disarmed."""
+    # Disarmed panels, whatever their status text says
+    assert _login('zerowire/general').areas[0]['arm_state'] == 'disarm'
+    assert _login('xgen/nxg64ip').areas[0]['status'] == 'Not Ready'
+    assert _login('xgen/nxg64ip').areas[0]['arm_state'] == 'disarm'
+
+    # Still armed away while an alarm or exit delay owns the status text
+    uobj = _login('comnav/0.108-burglar-alarm-on')
+    assert uobj.areas[0]['status'] == 'Burglar Alarm'
+    assert uobj.areas[0]['arm_state'] == 'away'
+
+    uobj = _login('zerowire/armed')
+    assert uobj.areas[0]['status'] == 'Exit Delay 1'
+    assert uobj.areas[0]['arm_state'] == 'away'
+
+    # Turn on the stay (partial) bit of a real ZeroWire area page
+    uobj = _login('zerowire/general', area=lambda page: page.replace(
+        b'["010000000000', b'["010001000000'))
+    assert uobj.areas[0]['status'] == 'Armed Stay'
+    assert uobj.areas[0]['arm_state'] == 'stay'
+
+    # Turn on the stay (partial) bit of a real ComNav area page
+    uobj = _login('comnav/0.108', area=lambda page: page.replace(
+        b'new Array(0,0,1,', b'new Array(0,1,1,'))
+    assert uobj.areas[0]['status'] == 'Armed Stay'
+    assert uobj.areas[0]['arm_state'] == 'stay'
