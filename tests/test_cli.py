@@ -23,6 +23,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+import json
 from unittest import mock
 from importlib import reload
 import requests
@@ -132,8 +133,13 @@ def test_cli_details(mock_post, tmpdir):
         zrobj.content = f.read()
     zrobj.status_code = requests.codes.ok
 
+    # The panel sends us back to its login page when we log off
+    lgobj = mock.Mock()
+    lgobj.content = b''
+    lgobj.status_code = requests.codes.found
+
     # Assign our response object to our mocked instance of requests
-    mock_post.side_effect = (arobj, zrobj)
+    mock_post.side_effect = (arobj, zrobj, lgobj)
 
     # Initialize our Runner
     runner = CliRunner()
@@ -166,10 +172,19 @@ def test_cli_details(mock_post, tmpdir):
         # now we have configuration
         assert result.exit_code == 0
 
+        # stdout holds nothing but the JSON details
+        assert json.loads(result.stdout)['areas']
+
+        # The session we were given is closed again when we're done
+        assert mock_post.call_args_list[-1][0][0] == \
+            'http://ultrasync.example.com/logout.cgi'
+        assert mock_post.call_args_list[-1][1]['data'] == \
+            {'sess': '5B0E636502CB6649'}
+
     # Reset our object
     mock_post.reset_mock()
     # Assign our response object to our mocked instance of requests
-    mock_post.side_effect = (arobj, zrobj)
+    mock_post.side_effect = (arobj, zrobj, lgobj)
 
     with mock.patch('ultrasync.cli.DEFAULT_SEARCH_PATHS', [str(config)]):
         result = runner.invoke(cli.main, [
@@ -321,3 +336,26 @@ def test_cli_watch(mock_usync, mock_sleep, tmpdir):
     assert result.output.count('Area 1') == 1
     assert result.output.count('---') == 1
     assert mock_sleep.call_count == 2
+
+
+@mock.patch('requests.Session.post')
+def test_cli_details_failure(mock_post, tmpdir):
+    """
+    Test UltraSync CLI Details when the panel can not be reached
+
+    """
+    config = tmpdir.join("config")
+    config.write('host: ultrasync.example.com\n')
+
+    # The panel refuses every request
+    bad = mock.Mock()
+    bad.content = b''
+    bad.status_code = 500
+    mock_post.return_value = bad
+
+    runner = CliRunner()
+    result = runner.invoke(cli.main, ['--config', str(config), '--details'])
+
+    # An empty result is still valid JSON, but the run is a failure
+    assert result.exit_code == 1
+    assert json.loads(result.stdout) == {}

@@ -130,8 +130,9 @@ def main(config, debug_dump, full_debug_dump, scene, bypass, details, watch,
     #       want to return a specific error code, you must call sys.exit()
     #       as you will see below.
 
-    # Logging
-    ch = logging.StreamHandler(sys.stdout)
+    # Logging goes to stderr so stdout only holds results (such as the
+    # --details JSON) that other scripts can read safely
+    ch = logging.StreamHandler(sys.stderr)
     if verbose > 3:
         # -vvvv: Most Verbose Debug Logging
         logger.setLevel(logging.TRACE)
@@ -185,11 +186,35 @@ def main(config, debug_dump, full_debug_dump, scene, bypass, details, watch,
             'Could not load ultrasync configuration: {}'.format(config))
         sys.exit(1)
 
+    try:
+        # Run the requested actions
+        _actions(
+            usync, debug_dump, full_debug_dump, scene, bypass, details,
+            watch, area, zone, output, switch)
+
+    finally:
+        # Always end our panel session, even after an error, so repeated
+        # runs don't leave old sessions open on the panel
+        usync.logout()
+
+
+def _actions(usync, debug_dump, full_debug_dump, scene, bypass, details,
+             watch, area, zone, output, switch):
+    """
+    Performs each action requested on the command line, then exits.
+
+    """
     # toggles to true if at least one item is actioned
     actioned = False
 
     if details:
-        print(json.dumps(usync.details(), indent=2, sort_keys=True))
+        results = usync.details()
+        print(json.dumps(results, indent=2, sort_keys=True))
+        if not results:
+            # The panel gave us nothing; let the caller know it failed
+            logger.error('Could not retrieve alarm status')
+            sys.exit(1)
+
         actioned = True
 
     if debug_dump or full_debug_dump:

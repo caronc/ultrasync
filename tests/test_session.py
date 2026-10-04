@@ -138,14 +138,33 @@ def test_logout(mock_post):
     # A normal log off
     mock_post.side_effect = _zerowire_login() + (_resp(b'bye'),)
     assert uobj.login() is True
+    session_id = uobj.session_id
     assert uobj.logout() is True
     assert uobj.session_id is None
     assert mock_post.call_args_list[-1][0][0] == \
         'http://zerowire/logout.cgi'
 
-    # The panel errors on log off; the session is still forgotten
+    # The panel is told which session is ending
+    assert mock_post.call_args_list[-1][1]['data'] == {'sess': session_id}
+
+    # Being sent back to the login page also means we are logged off
+    mock_post.side_effect = _zerowire_login() + (
+        _resp(status_code=requests.codes.found),)
+    assert uobj.login() is True
+    assert uobj.logout() is True
+
+    # The panel errors on log off; the session is still forgotten and
+    # no new login is attempted
     mock_post.reset_mock()
     mock_post.side_effect = _zerowire_login() + (_resp(status_code=500),)
+    assert uobj.login() is True
+    assert uobj.logout() is False
+    assert uobj.session_id is None
+    assert mock_post.call_count == 3
+
+    # The panel can not be reached at all
+    mock_post.side_effect = _zerowire_login() + (
+        requests.exceptions.ConnectionError(),)
     assert uobj.login() is True
     assert uobj.logout() is False
     assert uobj.session_id is None
