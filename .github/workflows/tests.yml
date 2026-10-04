@@ -31,7 +31,7 @@ jobs:
       # expanded using subsequent `include` items.
       matrix:
         os: ["ubuntu-latest"]
-        python-version: ["3.10"]
+        python-version: ["3.14"]
         bare: [false]
 
     defaults:
@@ -47,7 +47,12 @@ jobs:
     steps:
 
     - name: Acquire sources
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
+
+    - name: Install Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
 
     - name: Install prerequisites (Linux)
       if: runner.os == 'Linux'
@@ -75,7 +80,7 @@ jobs:
         coverage report
 
     - name: Upload coverage data
-      uses: codecov/codecov-action@v3
+      uses: codecov/codecov-action@v5
       with:
         files: ./coverage.xml
         fail_ci_if_error: false
