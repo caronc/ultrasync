@@ -1,0 +1,97 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge">
+		<title>xGen :: Secure Network</title>
+		<meta name="viewport" content="initial-scale=1.0, width=device-width, maximum-scale = 1.0, minimum-scale = 1.0" />
+		<script src="/javascript/eng_au.js" charset="utf-8"></script>
+		<link href="/javascript/m.css" rel="stylesheet">
+		<script src="/javascript/master.js" charset="utf-8"></script>
+		<script src="/javascript/config.js" charset="utf-8"></script>
+		<script src="/javascript/zwave.js" charset="utf-8"></script>
+
+	</head>
+	<body onload = "afterLoad();">
+		<div id="w">
+			<!-- buildBanner() inserts banner html here -->
+			<!-- buildMenu() inserts status menu here -->
+		</div>
+		<script>
+  var israndom = true;
+  var fobcnt = 16;
+  var zonetxcnt = 176;
+  var zoneBucket = 176;    //The item number of the max zone sensor
+  var fobBucket = ((16) + (176));      //the item number of the max fob transmitters
+  var maxTransmitters = ((16) + (176));   //The item number of the last transmitter
+  var maxZones= 176;
+  var myZwaveNode = 1;
+  var myCapability = 0;
+var channelAccess = 0xFFFF;
+var tampers = [];
+
+var nameArray = new Array(
+new Array(0),
+new Array(0),
+new Array(' '+firstArray[0]+' ',"Lobby%20PIR","Study%20PIR","Lounge%20PIR","Landing%20PIR","Workshop%20PIR","Kitchen%20SMOKE","Lobby%20SMOKE","Loft%20SMOKE","Patio%20PIR","Patio%20REED","Back%20Door%20REED","Key%20Switch","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""),
+new Array(' '+firstArray[0]+' ',"House","Workshop","Loft","","","","",""),
+new Array(' '+firstArray[0]+' ',"Central%20Station%20Primary","Central%20Station%20Backup%201","Central%20Station%20Backup%202","Phone%201","Phone%202","Phone%203","Email%204","Email%205","Email%206","Email%207","Email%208","Email%209","Email%2010","Email%2011","Email%2012","Email%2013"),
+new Array(0),
+new Array(' '+firstArray[1]+' ',"Night%20Auto%20Disarm","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""),
+new Array(' '+firstArray[3]+' ',"Not%20Ready%20%2d%20Chime%20On","Not%20Ready","Ready","Zone%20Alarm","Zone%20Bypass","Zone%20Tamper","Trouble","Exit%20Time%201","Exit%20Time%202","Exit%20Time%201%20or%202","Entry%20Time","Armed","Armed%20Stay","Smoke%20Power","User%20Code%20Output","Box%20Tamper","Any%20Siren","Output%20Relay%201","Output%20Relay%202","Any%20Alarm","Burglary%20Alarm","Fire%20Alarm","Panic%20Alarm","Auxiliary%20Alarm","Remote%20Programming","Local%20Programming","System%20Low%20Battery","Mains%20Failure","Output%20Relay%203","Cell%20Link%20Fault","Ethernet%20Link%20Down","Ethernet%20Comm%20Failure"),
+new Array(' '+firstArray[0]+' ',"Workshop%20Arm%2dDisarm","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""),
+new Array(0),
+new Array(' '+firstArray[0]+' ',"All%20Areas","Area1","Area2","Area3","Area4","Area5","Area6","Area7","Area8","Area9","Area10","Area11","Area12","Area13","Area14","Area15","Area16","Area17","Area18","Area19","Area20","Area21","Area22","Area23","Area24","Area25","Area26","Area27","Area28","Area29","Area30","Area31","Area32","Area1%2d2","Area1%2d2%2d3","Area1%2d2%2d3%2d4","Area1%2d2%2d3%2d4%2d5","Area1%2d2%2d3%2d4%2d5%2d6","Area1%2d2%2d3%2d4%2d5%2d6%2d7","Area1%2d2%2d3%2d4%2d5%2d6%2d7%2d8","Area2%2d3","Area2%2d3%2d4","Area2%2d3%2d4%2d5","Area2%2d3%2d4%2d5%2d6","Area2%2d3%2d4%2d5%2d6%2d7","Area2%2d3%2d4%2d5%2d6%2d7%2d8","Area3%2d4","Area3%2d4%2d5","Area3%2d4%2d5%2d6","Area3%2d4%2d5%2d6%2d7","Area3%2d4%2d5%2d6%2d7%2d8","Area4%2d5","Area4%2d5%2d6","Area4%2d5%2d6%2d7","Area4%2d5%2d6%2d7%2d8","Area5%2d6","Area5%2d6%2d7","Area5%2d6%2d7%2d8","Area6%2d7","Area6%2d7%2d8","Area7%2d8","Area33","Area34","Area35","Area36","Area37","Area38","Area39","Area40","Area41","Area42","Area43","Area44","Area45","Area46","Area47","Area48","Area49","Area50","Area51","Area52","Area53","Area54","Area55","Area56","Area57","Area58","Area59","Area60","Area61","Area62","Area63","Area64","Area65","Area66","Area67","Area68","Area69","Area70","Area71","Area72","Area73","Area74","Area75","Area76","Area77","Area78","Area79","Area80","Area81","Area82","Area83","Area84","Area85","Area86","Area87","Area88","Area89","Area90","Area91","Area92","Area93","Area94","Area95","Area96","Undefined","Undefined","Undefined"),
+new Array(' '+firstArray[0]+' ',"House%20GRP","Workshop%20GRP","Loft%20GRP","Area4","Area5","Area6","Area7","Area8","Area%20Group9","Area%20Group10","Area%20Group11","Area%20Group12","Area%20Group13","Area%20Group14","Area%20Group15","Area%20Group16","Area%20Group17","Area%20Group18","Area%20Group19","Area%20Group20","Area%20Group21","Area%20Group22","Area%20Group23","Area%20Group24","Area%20Group25","Area%20Group26","Area%20Group27","Area%20Group28","Area%20Group29","Area%20Group30","Area%20Group31","Area%20Group32","Area1%2d2","Area1%2d2%2d3","Area1%2d2%2d3%2d4","Area1%2d2%2d3%2d4%2d5","Area1%2d2%2d3%2d4%2d5%2d6","Area1%2d2%2d3%2d4%2d5%2d6%2d7","Area1%2d2%2d3%2d4%2d5%2d6%2d7%2d8","Area2%2d3","Area2%2d3%2d4","Area2%2d3%2d4%2d5","Area2%2d3%2d4%2d5%2d6","Area2%2d3%2d4%2d5%2d6%2d7","Area2%2d3%2d4%2d5%2d6%2d7%2d8","Area3%2d4","Area3%2d4%2d5","Area3%2d4%2d5%2d6","Area3%2d4%2d5%2d6%2d7","Area3%2d4%2d5%2d6%2d7%2d8","Area4%2d5","Area4%2d5%2d6","Area4%2d5%2d6%2d7","Area4%2d5%2d6%2d7%2d8","Area5%2d6","Area5%2d6%2d7","Area5%2d6%2d7%2d8","Area6%2d7","Area6%2d7%2d8","Area7%2d8","Area%20Group61","Area%20Group62","Area%20Group63","Area%20Group64","Area%20Group65","Area%20Group66","Area%20Group67","Area%20Group68","Area%20Group69","Area%20Group70","Area%20Group71","Area%20Group72","Area%20Group73","Area%20Group74","Area%20Group75","Area%20Group76","Area%20Group77","Area%20Group78","Area%20Group79","Area%20Group80","Area%20Group81","Area%20Group82","Area%20Group83","Area%20Group84","Area%20Group85","Area%20Group86","Area%20Group87","Area%20Group88","Area%20Group89","Area%20Group90","Area%20Group91","Area%20Group92","Area%20Group93","Area%20Group94","Area%20Group95","Area%20Group96","Area%20Group97","Area%20Group98","Area%20Group99","Area%20Group100","Area%20Group101","Area%20Group102","Area%20Group103","Area%20Group104","Area%20Group105","Area%20Group106","Area%20Group107","Area%20Group108","Area%20Group109","Area%20Group110","Area%20Group111","Area%20Group112","Area%20Group113","Area%20Group114","Area%20Group115","Area%20Group116","Area%20Group117","Area%20Group118","Area%20Group119","Area%20Group120","Area%20Group121","Area%20Group122","Area%20Group123","Area%20Group124","All%20Areas","Undefined%20Group","Undefined%20Group","Undefined%20Group"),
+new Array(' '+firstArray[0]+' ',"","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","Blank%20menu"),
+new Array(' '+firstArray[0]+' ',"","","",""),
+new Array(' '+firstArray[0]+' ',"Day%20Zone","24%20Hour%20Audible","Entry%20Exit%20Delay%201","Entry%20Exit%20Delay%202","Follower","Instant","24%20Hour%20silent","Fire%20Alarm","Entry%20Exit%20Delay%201%20Auto%2dBypass","Entry%20Exit%20Delay%202%20Auto%2dBypass","Instant%20Auto%2dBypass","Event%20Only","Momentary%20Key%20Switch","Latching%20Key%20Switch","CO%20Detector","Exit%20Terminate","Holdup","24%20Hour%20Local%20Sounder","Fire%20Reporting%20Only","","","","","","","","","","","","",""),
+new Array(' '+firstArray[0]+' ',"Bypass","Bypass%20Stay","Bypass%20%2d%20Forced%20Arm","Bypass%20%2d%20Twin%20Trip","Fire","Panic","Silent%20Panic","Normally%20Open%20no%20EOL","Normally%20Closed%20no%20EOL","Gas%20Detected","High%20Temp","Water%20Leakage","Low%20Temp","High%20Temp","Fire%20Alarm%20Pull%20Station","Night%20Mode","Final%20Set%20Door","Medical","Bypass%20Stay%20%2d%20Forced%20Arm","Request%2dTo%2dExit","Fire%20Reporting%20Only","","","","","","","","","","",""),
+new Array(' '+firstArray[0]+' ',"All%20Events","Arm%20Disarm%20Alarm%20Events","","","Phone%202%20Notifications","Phone%203%20Notifications","","","","","","","","","",""),
+new Array(' '+firstArray[0]+' ',"","","","","","","","","","","","","","","",""),
+new Array(' '+firstArray[0]+' ',"","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""),
+new Array(' '+firstArray[0]+' ',"Output%20Relay%201","Output%20Relay%202","Output%20Relay%203","Disarm%20On%20Motion","","","","","","","","","","","",""),
+new Array(0),
+new Array(' '+firstArray[0]+' ',"","","","","","","","","","","","","","","",""),
+new Array(0),
+new Array(' '+firstArray[0]+' ',"","","","","","","","","","","","","","","",""),
+new Array(' '+firstArray[0]+' ',"","","","","","","","","","","","","","","","","All%20Relays","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","")
+);
+
+var wfbutton = "do not show";
+var settingsAccess = 0x3FE7FE1F;
+var usersData = '{"users":[{"user":1,"fname":"Master1","lname":"","slot":1},{"user":256,"fname":"admin","lname":"","slot":2},{"user":2,"fname":"Alex","lname":"Example","slot":3},{"user":3,"fname":"Sam","lname":"Example","slot":4},{"user":5,"fname":"homeassistant","lname":"","slot":6}]}';
+var tempScale = "C";
+var maxZUsers = 250;
+
+function getSession(){return "0123456789ABCDEF";}
+function afterLoad()
+{
+	usersData = JSON.parse(usersData);
+	convertUserNames(usersData);
+for(var i = 0; i < nameArray.length; i++)
+convertNames(nameArray[i]);
+numberSortUsers();
+parseJsonNodeString('{"zwavenodes":[{"ID":"1","dename":"","btype":"0","gtype":"2","stype":"0","cap":"0","sec":"0","tindex":"0","room":0,"scon":"0","scoff":"0","tlow":0,"thigh":0,"cc":[]}],"status":" ","resdata":"00","state":0,"mynode":1,"mycape":0,"zwtmp":[],"rmnames":["","","","","","","","","","","","","","","",""]}');
+//setInitialState(0);
+initMenus();
+buildBanner(defaultNames[22]);
+buildMenu(7,1,1,1,1,1,1,0);
+getSetSelect();
+buildTiles();
+if((settingsAccess & (0x01<< 20)) != 0)
+killaddrem();
+timeOutMS = 20000;
+region = 3;
+
+}
+// function called by iPhone to return "{active menu index, authorised menu list}"
+// Note: the iPhone will display in the order presented here. see master.jss
+function getMenu()
+{
+return "[6, [1,1,1,1,1,1,1,1]]";
+}
+
+		</script>
+	</body>
+</html>
