@@ -294,6 +294,71 @@ def test_debug_dump_zip(mock_post, mock_get, tmpdir):
     assert 'panel/master.js' in names
     assert progress.update.call_count == len(names) + 1
 
+    # The Advanced page is only captured on xGen panels
+    assert 'panel/config1.htm' not in names
+    assert 'panel/config.js' not in names
+
+    # The Output Control page is still asked for
+    assert 'panel/outputs.htm' in names
+
+
+@mock.patch('requests.Session.get')
+@mock.patch('requests.Session.post')
+def test_debug_dump_xgen_advanced_page(mock_post, mock_get, tmpdir):
+    """An xGen dump captures the Advanced page and its script."""
+    # Borrow the ZeroWire pages, swapping in the xGen8 script path
+    area = _resp(path=join(ZEROWIRE_VAR_DIR, 'area.htm'))
+    area.content = area.content.replace(b'/v_ZW_03.02-C/', b'/javascript/')
+    mock_post.side_effect = (
+        area, _resp(path=join(ZEROWIRE_VAR_DIR, 'zones.htm')))
+
+    uobj = UltraSync()
+    assert uobj.login() is True
+    assert uobj.vendor is NX595EVendor.XGEN8
+
+    # Every page and script request is answered
+    mock_post.side_effect = None
+    mock_post.return_value = _resp(b'<html>page</html>')
+    mock_get.return_value = _resp(b'var x = 1;')
+
+    path = str(tmpdir.join('panel'))
+    uobj.debug_dump(path=path, compress=True)
+
+    with ZipFile('{}.zip'.format(path)) as myzip:
+        names = myzip.namelist()
+
+    assert 'panel/config1.htm' in names
+    assert 'panel/config.js' in names
+    assert 'http://zerowire/javascript/config.js' in \
+        [c[0][0] for c in mock_get.call_args_list]
+
+    # xGen panels have no Output Control page, so it is never asked for
+    assert 'panel/outputs.htm' not in names
+    assert not [c for c in mock_post.call_args_list
+                if c[0][0].endswith('/user/outputs.htm')]
+
+    # A user without installer access is redirected away from the
+    # Advanced page.  It is skipped and the panel is not logged into again.
+    def _post(url, **kwargs):
+        # Only the Advanced page is refused
+        return _resp(status_code=requests.codes.found) \
+            if url.endswith('/protect/config1.htm') \
+            else _resp(b'<html>page</html>')
+
+    mock_post.reset_mock()
+    mock_post.side_effect = _post
+
+    path = str(tmpdir.join('user'))
+    uobj.debug_dump(path=path, compress=True)
+
+    with ZipFile('{}.zip'.format(path)) as myzip:
+        names = myzip.namelist()
+
+    assert 'user/config1.htm' not in names
+    assert 'user/config.js' in names
+    assert not [c for c in mock_post.call_args_list
+                if c[0][0].endswith('/login.cgi')]
+
 
 @mock.patch('requests.Session.get')
 @mock.patch('requests.Session.post')
