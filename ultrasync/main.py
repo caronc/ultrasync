@@ -407,6 +407,22 @@ class UltraSync(UltraSyncConfig):
                     'minc': 'protect/area.xml'
                 }} for no in range(0, 4 if full else 1)})
 
+            if self.vendor in (NX595EVendor.XGEN, NX595EVendor.XGEN8):
+                # The Advanced (installer) page and the script that runs
+                # its menus.  Only installer users can open them, so a
+                # refused page is skipped instead of logging in again.
+                urls.update({
+                    'config1.htm': {
+                        'path': '/protect/config1.htm',
+                        'auth_on_fail': False,
+                    },
+                    'config.js': {
+                        'path': '{}/config.js'.format(self.__panel_url_path),
+                        'method': 'GET',
+                        'auth_on_fail': False,
+                    },
+                })
+
             # zstate.json - All Zones
             urls.update({'zstate.{}.json'.format(no + 1): {
                 'path': '/user/zstate.json',
