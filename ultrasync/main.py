@@ -1748,12 +1748,17 @@ class UltraSync(UltraSyncConfig):
         # The following are unused sensors:
         # - '%21' == '!'
         # - '%2D' == '-'
+        # Without zone naming, zones in use have blank names, so only a
+        # '!' name marks an unused zone (the panel's own page hides these
+        # too).
+        unused = ('%21', '!', '%2D', '-', '') if zone_naming \
+            else ('%21', '!')
         self.zones = \
             {x: {'name': unquote(y).strip()
                  if unquote(y).strip()
                  else 'Sensor {}'.format(x + 1), 'bank': x}
              for x, y in enumerate(zone_names)
-             if not zone_naming or (y not in ('%21', '!', '%2D', '-', ''))}
+             if y not in unused}
 
         #
         # Get our Master Status
