@@ -423,6 +423,10 @@ class UltraSync(UltraSyncConfig):
                     },
                 })
 
+                # These panels have no Output Control page, so asking for
+                # it only shows an error during the dump.
+                del urls['outputs.htm']
+
             # zstate.json - All Zones
             urls.update({'zstate.{}.json'.format(no + 1): {
                 'path': '/user/zstate.json',

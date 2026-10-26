@@ -298,6 +298,9 @@ def test_debug_dump_zip(mock_post, mock_get, tmpdir):
     assert 'panel/config1.htm' not in names
     assert 'panel/config.js' not in names
 
+    # The Output Control page is still asked for
+    assert 'panel/outputs.htm' in names
+
 
 @mock.patch('requests.Session.get')
 @mock.patch('requests.Session.post')
@@ -328,6 +331,11 @@ def test_debug_dump_xgen_advanced_page(mock_post, mock_get, tmpdir):
     assert 'panel/config.js' in names
     assert 'http://zerowire/javascript/config.js' in \
         [c[0][0] for c in mock_get.call_args_list]
+
+    # xGen panels have no Output Control page, so it is never asked for
+    assert 'panel/outputs.htm' not in names
+    assert not [c for c in mock_post.call_args_list
+                if c[0][0].endswith('/user/outputs.htm')]
 
     # A user without installer access is redirected away from the
     # Advanced page.  It is skipped and the panel is not logged into again.
