@@ -1026,24 +1026,24 @@ class UltraSync(UltraSyncConfig):
                         if not vbank[XGZWAreaBank.UNKWN_01] \
                         else AreaStatus.NOT_READY_FORCEABLE
 
-            if vbank[XGZWAreaBank.UNKWN_08] or \
-                    vbank[XGZWAreaBank.UNKWN_09] or \
-                    vbank[XGZWAreaBank.UNKWN_10] or \
-                    vbank[XGZWAreaBank.UNKWN_11]:
+            if vbank[XGZWAreaBank.ALARM_FIRE] or \
+                    vbank[XGZWAreaBank.ALARM_PANIC] or \
+                    vbank[XGZWAreaBank.ALARM_BURGLAR] or \
+                    vbank[XGZWAreaBank.ALARM_MEDICAL]:
 
                 # Assign priority to 1
                 priority = 1
 
-            elif vbank[XGZWAreaBank.UNKWN_33] or \
-                    vbank[XGZWAreaBank.UNKWN_34] or \
-                    vbank[XGZWAreaBank.UNKWN_35] or \
-                    vbank[XGZWAreaBank.UNKWN_36] or \
+            elif vbank[XGZWAreaBank.SENSOR_TROUBLE] or \
+                    vbank[XGZWAreaBank.SENSOR_TAMPER] or \
+                    vbank[XGZWAreaBank.SENSOR_BATTERY] or \
+                    vbank[XGZWAreaBank.SENSOR_SUPERVISION] or \
                     self.__extra_area_status:
 
                 # Assign priority to 2
                 priority = 2
 
-            elif st_partial or vbank[XGZWAreaBank.UNKWN_32]:
+            elif st_partial or vbank[XGZWAreaBank.SENSOR_BYPASS]:
                 # Assign priority to 3
                 priority = 3
 
@@ -1051,7 +1051,7 @@ class UltraSync(UltraSyncConfig):
                 # Assign priority to 4
                 priority = 4
 
-            elif not vbank[XGZWAreaBank.UNKWN_00]:
+            elif not vbank[XGZWAreaBank.READY]:
                 # Assign priority to 5
                 priority = 5
 
@@ -1177,24 +1177,24 @@ class UltraSync(UltraSyncConfig):
                         if not vbank[XGZWAreaBank.UNKWN_01] \
                         else AreaStatus.NOT_READY_FORCEABLE
 
-            if vbank[XGZWAreaBank.UNKWN_08] or \
-                    vbank[XGZWAreaBank.UNKWN_09] or \
-                    vbank[XGZWAreaBank.UNKWN_10] or \
-                    vbank[XGZWAreaBank.UNKWN_11]:
+            if vbank[XGZWAreaBank.ALARM_FIRE] or \
+                    vbank[XGZWAreaBank.ALARM_PANIC] or \
+                    vbank[XGZWAreaBank.ALARM_BURGLAR] or \
+                    vbank[XGZWAreaBank.ALARM_MEDICAL]:
 
                 # Assign priority to 1
                 priority = 1
 
-            elif vbank[XGZWAreaBank.UNKWN_33] or \
-                    vbank[XGZWAreaBank.UNKWN_34] or \
-                    vbank[XGZWAreaBank.UNKWN_35] or \
-                    vbank[XGZWAreaBank.UNKWN_36] \
+            elif vbank[XGZWAreaBank.SENSOR_TROUBLE] or \
+                    vbank[XGZWAreaBank.SENSOR_TAMPER] or \
+                    vbank[XGZWAreaBank.SENSOR_BATTERY] or \
+                    vbank[XGZWAreaBank.SENSOR_SUPERVISION] \
                     or self.__extra_area_status:
 
                 # Assign priority to 2
                 priority = 2
 
-            elif st_partial or vbank[XGZWAreaBank.UNKWN_32]:
+            elif st_partial or vbank[XGZWAreaBank.SENSOR_BYPASS]:
                 # Assign priority to 3
                 priority = 3
 
@@ -1202,7 +1202,7 @@ class UltraSync(UltraSyncConfig):
                 # Assign priority to 4
                 priority = 4
 
-            elif not vbank[XGZWAreaBank.UNKWN_00]:
+            elif not vbank[XGZWAreaBank.READY]:
                 # Assign priority to 5
                 priority = 5
 
@@ -1307,20 +1307,24 @@ class UltraSync(UltraSyncConfig):
                     # Update
                     status = AreaStatus.NOT_READY
 
-            if vbank[CNAreaBank.UNKWN_03] or vbank[CNAreaBank.UNKWN_04] or \
-                    vbank[CNAreaBank.UNKWN_05] or vbank[CNAreaBank.UNKWN_06]:
+            if vbank[CNAreaBank.ALARM_FIRE] or \
+                    vbank[CNAreaBank.ALARM_BURGLAR] or \
+                    vbank[CNAreaBank.ALARM_PANIC] or \
+                    vbank[CNAreaBank.ALARM_MEDICAL]:
 
                 # Assign priority to 1
                 priority = 1
 
-            elif vbank[CNAreaBank.UNKWN_11] or vbank[CNAreaBank.UNKWN_12] or \
-                    vbank[CNAreaBank.UNKWN_13] or vbank[CNAreaBank.UNKWN_14] \
+            elif vbank[CNAreaBank.SENSOR_TROUBLE] or \
+                    vbank[CNAreaBank.SENSOR_TAMPER] or \
+                    vbank[CNAreaBank.SENSOR_BATTERY] or \
+                    vbank[CNAreaBank.SENSOR_SUPERVISION] \
                     or self.__extra_area_status:
 
                 # Assign priority to 2
                 priority = 2
 
-            elif vbank[CNAreaBank.UNKWN_10] or st_partial:
+            elif vbank[CNAreaBank.SENSOR_BYPASS] or st_partial:
                 # Assign priority to 3
                 priority = 3
 
@@ -1328,7 +1332,7 @@ class UltraSync(UltraSyncConfig):
                 # Assign priority to 4
                 priority = 4
 
-            elif vbank[CNAreaBank.UNKWN_02]:
+            elif vbank[CNAreaBank.READY]:
                 # Assign priority to 5
                 priority = 5
 
