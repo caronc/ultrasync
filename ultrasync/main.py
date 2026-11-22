@@ -737,6 +737,101 @@ class UltraSync(UltraSyncConfig):
 
         return not has_error
 
+    def set_chime(self, areas=None, state=True):
+        """
+        Turns the chime on or off for one or more areas
+
+        """
+        if not self.session_id and not self.login():
+            return False
+
+        if not areas:
+            # Load all of our detected areas
+            areas = [int(a) + 1 for a in self.areas.keys()]
+
+        elif not isinstance(areas, (list, tuple, set)):
+            # Ensure we're working with a set
+            areas = [areas]
+
+        # ComNav only offers a chime toggle, so read the panel's current
+        # chime state first to know whether a toggle is needed.
+        if self.vendor == NX595EVendor.COMNAV and \
+                not self.update(max_age_sec=0):
+            return False
+
+        # A boolean for tracking any errors
+        has_error = False
+
+        for area in areas:
+            if not isinstance(area, int):
+                try:
+                    # Do our best to accomodate this situation
+                    area = int(area)
+
+                except (TypeError, ValueError):
+                    logger.error(
+                        'An invalid Area ({}) was specified.'.format(area))
+                    has_error = True
+                    continue
+
+            if (area - 1) not in self.areas:
+                logger.error(
+                    'Area {} does not exist'.format(area))
+                has_error = True
+                continue
+
+            # Start our payload off with our session identifier
+            payload = {
+                'sess': self.session_id,
+            }
+
+            if self.vendor in (NX595EVendor.ZEROWIRE, NX595EVendor.XGEN,
+                               NX595EVendor.XGEN8):
+                # These panels have separate chime on and off commands
+                payload.update({
+                    'start': int(math.floor((area - 1) / 8)),
+                    'mask': 1 << (area - 1) % 8,
+                    'fnum': XGZWPanelFunction.AREA_CHIME_ON
+                    if state else XGZWPanelFunction.AREA_CHIME_OFF,
+                })
+
+                rtype = HubResponseType.JSON
+
+            else:  # self.vendor is NX595EVendor.COMNAV
+
+                # Nothing to send when the chime is already as requested,
+                # since a toggle would turn it the wrong way.
+                if self.areas[area - 1]['states']['chime'] == bool(state):
+                    logger.info(
+                        'Chime is already {} for Area {}'.format(
+                            'on' if state else 'off', area))
+                    continue
+
+                payload.update({
+                    'comm': 80,
+                    'data0': 2,
+                    'data1': 1 << (area - 1) % 8,
+                    'data2': CNPanelFunction.AREA_CHIME_TOGGLE,
+                })
+
+                rtype = HubResponseType.XML
+
+            # Send our response
+            response = self.__get(
+                '/user/keyfunction.cgi', rtype=rtype, payload=payload)
+
+            if not response:
+                logger.info(
+                    'Failed to set chime={} for Area {}'.format(state, area))
+                has_error = True
+
+            else:
+                logger.info(
+                    'Set chime={} for Area {} Successfully'.format(
+                        state, area))
+
+        return not has_error
+
     def set_zone_bypass(self, zone, state=False):
         """
         Sets zone bypass

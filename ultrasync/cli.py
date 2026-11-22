@@ -98,10 +98,13 @@ def print_version_msg():
 @click.option('--bypass', type=bool,
               metavar='BYPASS',
               help='Set to 1 to bypass a zone, set to 0 to unbypass.')
+@click.option('--chime', type=bool,
+              metavar='CHIME',
+              help='Set to 1 to turn the chime on, set to 0 to turn it off.')
 @click.option('--area', '-a', default=0, type=int, metavar='AREA',
               help='Specify the Area you wish to target with a --scene (-s) '
-              'action. If no area is specified, then *all* areas are '
-              'targeted.')
+              'or --chime action. If no area is specified, then *all* areas '
+              'are targeted.')
 @click.option('--zone', type=int, metavar='ZONE',
               help='Specify the Zone you wish to target with a --bypass '
               'action.')
@@ -121,8 +124,8 @@ def print_version_msg():
 @click.option('--verbose', '-v', count=True)
 @click.option('--version', '-V', is_flag=True,
               help='Display the version of the ultrasync library and exit.')
-def main(config, debug_dump, full_debug_dump, scene, bypass, details, watch,
-         area, zone, output, switch, verbose, version):
+def main(config, debug_dump, full_debug_dump, scene, bypass, chime, details,
+         watch, area, zone, output, switch, verbose, version):
     """
     Wrapper to ultrasync library.
     """
@@ -189,8 +192,8 @@ def main(config, debug_dump, full_debug_dump, scene, bypass, details, watch,
     try:
         # Run the requested actions
         _actions(
-            usync, debug_dump, full_debug_dump, scene, bypass, details,
-            watch, area, zone, output, switch)
+            usync, debug_dump, full_debug_dump, scene, bypass, chime,
+            details, watch, area, zone, output, switch)
 
     finally:
         # Always end our panel session, even after an error, so repeated
@@ -198,8 +201,8 @@ def main(config, debug_dump, full_debug_dump, scene, bypass, details, watch,
         usync.logout()
 
 
-def _actions(usync, debug_dump, full_debug_dump, scene, bypass, details,
-             watch, area, zone, output, switch):
+def _actions(usync, debug_dump, full_debug_dump, scene, bypass, chime,
+             details, watch, area, zone, output, switch):
     """
     Performs each action requested on the command line, then exits.
 
@@ -230,6 +233,11 @@ def _actions(usync, debug_dump, full_debug_dump, scene, bypass, details,
 
     if bypass is not None:
         if not usync.set_zone_bypass(zone=zone, state=bypass):
+            sys.exit(1)
+        actioned = True
+
+    if chime is not None:
+        if not usync.set_chime(areas=area, state=chime):
             sys.exit(1)
         actioned = True
 

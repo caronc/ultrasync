@@ -211,7 +211,7 @@ def test_apprise_cli_windows_env(mock_system):
 @mock.patch('ultrasync.cli.UltraSync')
 def test_cli_actions(mock_usync, tmpdir):
     """
-    Test UltraSync CLI scene, bypass and output actions
+    Test UltraSync CLI scene, bypass, chime and output actions
 
     """
     # Create a config file
@@ -223,6 +223,7 @@ def test_cli_actions(mock_usync, tmpdir):
     usync.load.return_value = True
     usync.set_alarm.return_value = True
     usync.set_zone_bypass.return_value = True
+    usync.set_chime.return_value = True
     usync.set_output_control.return_value = True
 
     runner = CliRunner()
@@ -242,6 +243,15 @@ def test_cli_actions(mock_usync, tmpdir):
     assert result.exit_code == 0
     usync.set_zone_bypass.assert_called_with(zone=3, state=True)
 
+    # Turn the chime on for one area, then off for every area
+    result = runner.invoke(cli.main, base + ['--chime', '1', '-a', '2'])
+    assert result.exit_code == 0
+    usync.set_chime.assert_called_with(areas=2, state=True)
+
+    result = runner.invoke(cli.main, base + ['--chime', '0'])
+    assert result.exit_code == 0
+    usync.set_chime.assert_called_with(areas=0, state=False)
+
     # Switch an output on
     result = runner.invoke(
         cli.main, base + ['--output', '1', '--switch', '1'])
@@ -256,12 +266,16 @@ def test_cli_actions(mock_usync, tmpdir):
     # The panel refuses each action
     usync.set_alarm.return_value = False
     usync.set_zone_bypass.return_value = False
+    usync.set_chime.return_value = False
     usync.set_output_control.return_value = False
 
     result = runner.invoke(cli.main, base + ['--scene', 'away'])
     assert result.exit_code == 1
 
     result = runner.invoke(cli.main, base + ['--bypass', '0', '--zone', '3'])
+    assert result.exit_code == 1
+
+    result = runner.invoke(cli.main, base + ['--chime', '1'])
     assert result.exit_code == 1
 
     result = runner.invoke(

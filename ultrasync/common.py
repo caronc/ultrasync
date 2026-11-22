@@ -53,6 +53,10 @@ class XGZWPanelFunction(object):
     AREA_CHIME_TOGGLE = 10
     AREA_AWAY = 15
 
+    # The panel's web page sends 10 to turn chime on and 11 to turn it off
+    AREA_CHIME_ON = 10
+    AREA_CHIME_OFF = 11
+
 
 class CNPanelFunction(object):
     """

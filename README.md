@@ -113,6 +113,18 @@ As the original manufacturer(s) are mostly defunct, new software development is 
 
   `--details` only writes JSON to the screen (messages go to stderr), and exits with an error code if the panel could not be read.
 
+- You can turn the keypad chime on or off. Add **--area** (**-a**) to change just one area; otherwise every area is changed.
+
+  ```bash
+  # Turn the chime on for every area
+  ultrasync --chime 1
+
+  # Turn the chime off for Area 2 only
+  ultrasync --chime 0 --area 2
+  ```
+
+  Whether the chime is on shows up in `--details` as `chime` under each area's `states`.
+
 - You can perform a dump of all of the web based files (*that I've found to be useful so far*) to disk.  This makes troubleshooting much easier.
 
   ```bash
