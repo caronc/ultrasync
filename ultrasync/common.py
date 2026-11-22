@@ -82,18 +82,23 @@ class XGZWAreaBank(object):
 
     """
 
-    UNKWN_00 = 0
+    # The named banks come from the panel's own status.js.  Its
+    # areaStatesByte list says where each status label (Ready, Fire Alarm,
+    # ...) is read from, and its updateArea() reads the walk test bank.
+    READY = 0
     UNKWN_01 = 1
     PARTIAL = 2
     ARMED = 3
     EXIT_MODE01 = 4
     EXIT_MODE02 = 5
-    UNKWN_06 = 6
+    DELAY_ENTRY = 6
     INSTANT = 7
-    UNKWN_08 = 8
-    UNKWN_09 = 9
-    UNKWN_10 = 10
-    UNKWN_11 = 11
+
+    # The alarm banks are not in the same order as on ComNav.
+    ALARM_FIRE = 8
+    ALARM_PANIC = 9
+    ALARM_BURGLAR = 10
+    ALARM_MEDICAL = 11
     UNKWN_12 = 12
     UNKWN_13 = 13
     UNKWN_14 = 14
@@ -109,16 +114,16 @@ class XGZWAreaBank(object):
     UNKWN_24 = 24
     UNKWN_25 = 25
     NIGHT = 26
-    UNKWN_27 = 27
+    WALK_TEST = 27
     UNKWN_28 = 28
     UNKWN_29 = 29
     UNKWN_30 = 30
     UNKWN_31 = 31
-    UNKWN_32 = 32
-    UNKWN_33 = 33
-    UNKWN_34 = 34
-    UNKWN_35 = 35
-    UNKWN_36 = 36
+    SENSOR_BYPASS = 32
+    SENSOR_TROUBLE = 33
+    SENSOR_TAMPER = 34
+    SENSOR_BATTERY = 35
+    SENSOR_SUPERVISION = 36
     UNKWN_37 = 37
 
 
@@ -136,21 +141,23 @@ class CNAreaBank(object):
 
     """
 
+    # The named banks come from the panel's own area.htm and status.js.
+    # Bank N holds the status shown with label N of its areaStates list.
     ARMED = 0
     PARTIAL = 1
-    UNKWN_02 = 2
-    UNKWN_03 = 3
-    UNKWN_04 = 4
-    UNKWN_05 = 5
-    UNKWN_06 = 6
+    READY = 2
+    ALARM_FIRE = 3
+    ALARM_BURGLAR = 4
+    ALARM_PANIC = 5
+    ALARM_MEDICAL = 6
     EXIT_MODE01 = 7
     EXIT_MODE02 = 8
-    UNKWN_09 = 9
-    UNKWN_10 = 10
-    UNKWN_11 = 11
-    UNKWN_12 = 12
-    UNKWN_13 = 13
-    UNKWN_14 = 14
+    DELAY_ENTRY = 9
+    SENSOR_BYPASS = 10
+    SENSOR_TROUBLE = 11
+    SENSOR_TAMPER = 12
+    SENSOR_BATTERY = 13
+    SENSOR_SUPERVISION = 14
     CHIME = 15
     UNKWN_16 = 16
 
