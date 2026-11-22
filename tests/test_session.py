@@ -45,6 +45,12 @@ ZEROWIRE_VAR_DIR = \
     join(dirname(__file__), 'var', NX595EVendor.ZEROWIRE, 'general')
 COMNAV_VAR_DIR = \
     join(dirname(__file__), 'var', NX595EVendor.COMNAV, '0.108')
+COMNAV_IT_VAR_DIR = \
+    join(dirname(__file__), 'var', NX595EVendor.COMNAV, '0.108-zone-test')
+XGEN_VAR_DIR = \
+    join(dirname(__file__), 'var', NX595EVendor.XGEN, 'general')
+XGEN8_VAR_DIR = \
+    join(dirname(__file__), 'var', NX595EVendor.XGEN8, 'reliance-xr-pro')
 
 
 def _resp(content=b'', path=None, status_code=requests.codes.ok):
@@ -441,6 +447,212 @@ def test_debug_dump_old_comnav(mock_post, mock_get, tmpdir):
     path = str(tmpdir.join('panel'))
     uobj.debug_dump(path=path)
     assert 'lang_engau.js' not in os.listdir(path)
+
+
+def _read(path):
+    """Return the bytes of a captured panel page."""
+    with open(path, 'rb') as f:
+        return f.read()
+
+
+def _comnav_it_login():
+    """Return the responses an Italian ComNav panel sends during login."""
+    return (
+        _resp(path=join(COMNAV_IT_VAR_DIR, 'area.htm')),
+        _resp(path=join(COMNAV_IT_VAR_DIR, 'zones.htm')),
+        # outputs.htm
+        _resp(),
+        _resp(path=join(COMNAV_IT_VAR_DIR, 'history.htm')),
+    )
+
+
+def _xgen_login():
+    """Return the responses an xGen panel sends during login."""
+    return (
+        _resp(path=join(XGEN_VAR_DIR, 'area.htm')),
+        _resp(path=join(XGEN_VAR_DIR, 'zones.htm')),
+    )
+
+
+def _xgen8_login():
+    """Return the responses an xGen8 (Reliance XR Pro) panel sends."""
+    return (
+        _resp(path=join(XGEN8_VAR_DIR, 'area.htm')),
+        _resp(path=join(XGEN8_VAR_DIR, 'zones.htm')),
+    )
+
+
+def _dump(mock_post, mock_get, tmpdir, login, pages=None, refuse=(),
+          progress=None):
+    """Log in, then take a debug dump from a mocked panel.
+
+    - pages: page path ending -> content to answer with.
+    - refuse: page paths the panel redirects away from.
+    - Returns the saved file names, the POSTed paths with their data, and
+      the script paths read with GET.
+    """
+    mock_post.side_effect = login
+    uobj = UltraSync()
+    assert uobj.login() is True
+
+    pages = pages or {}
+
+    def _post(url, **kwargs):
+        # Answer with a capture where one is given, else a small stub page
+        for ending, content in pages.items():
+            if url.endswith(ending):
+                return _resp(content)
+
+        return _resp(status_code=requests.codes.found) \
+            if url.split('//', 1)[1].split('/', 1)[1] in refuse \
+            else _resp(b'<html>page</html>')
+
+    mock_post.reset_mock()
+    mock_post.side_effect = _post
+    mock_get.reset_mock()
+    mock_get.return_value = _resp(b'var x = 1;')
+
+    path = str(tmpdir.join('panel'))
+    uobj.debug_dump(path=path, progress=progress)
+
+    posts = [(c[0][0].split('//', 1)[1].split('/', 1)[1], c[1].get('data'))
+             for c in mock_post.call_args_list]
+    scripts = [c[0][0].split('//', 1)[1].split('/', 1)[1]
+               for c in mock_get.call_args_list]
+    return sorted(os.listdir(path)), posts, scripts
+
+
+@mock.patch('requests.Session.get')
+@mock.patch('requests.Session.post')
+def test_debug_dump_language_file(mock_post, mock_get, tmpdir):
+    """A dump saves the language file the panel's area page loads."""
+    # xGen loads eng_eu.js, which the fixed list never asked for
+    files, _, scripts = _dump(
+        mock_post, mock_get, tmpdir.mkdir('xgen'), _xgen_login(),
+        {'/user/area.htm': _read(join(XGEN_VAR_DIR, 'area.htm'))})
+    assert 'eng_eu.js' in files
+    assert 'lang_engau.js' in files
+    assert scripts.count('v_XG_04.01-B/eng_eu.js') == 1
+    assert scripts.count('v_XG_04.01-B/master.js') == 1
+    assert scripts.count('v_XG_04.01-B/status.js') == 1
+
+    # An Italian ComNav panel loads lang_it.js instead of lang_engau.js
+    files, _, scripts = _dump(
+        mock_post, mock_get, tmpdir.mkdir('comnav'), _comnav_it_login(),
+        {'/user/area.htm': _read(join(COMNAV_IT_VAR_DIR, 'area.htm'))})
+    assert 'lang_it.js' in files
+    assert scripts.count('v_CN_0.108-O/lang_it.js') == 1
+
+    # ZeroWire's eng_us.js is already saved as lang_engau.js, so it is not
+    # read a second time
+    files, posts, scripts = _dump(
+        mock_post, mock_get, tmpdir.mkdir('zerowire'), _zerowire_login(),
+        {'/user/area.htm': _read(join(ZEROWIRE_VAR_DIR, 'area.htm'))})
+    assert 'lang_engau.js' in files
+    assert 'eng_us.js' not in files
+    assert not [s for s in scripts if s.endswith('eng_us.js')]
+    assert [p for p, _ in posts].count('v_ZW_03.02-C/eng_us.js') == 1
+
+
+@mock.patch('requests.Session.get')
+@mock.patch('requests.Session.post')
+def test_debug_dump_scripts_from_other_pages(mock_post, mock_get, tmpdir):
+    """Scripts loaded by any captured page are saved, not only the area's."""
+    # The xGen8 Settings page, with the Advanced page's script added to it
+    config2 = _read(join(XGEN8_VAR_DIR, 'config2.htm')).replace(
+        b'</head>', b'<script src="/javascript/Admin1.js"></script></head>')
+
+    progress = mock.Mock()
+    files, _, scripts = _dump(
+        mock_post, mock_get, tmpdir, _xgen8_login(),
+        {'/muser/config2.htm': config2}, progress=progress)
+    assert 'Admin1.js' in files
+    assert 'eng_au.js' in files
+    assert scripts.count('javascript/Admin1.js') == 1
+
+    # The Settings page's own scripts were already in the dump
+    assert scripts.count('javascript/config.js') == 1
+    assert scripts.count('javascript/zwave.js') == 1
+
+    # Scripts found along the way don't push the progress bar past 100%,
+    # so the final top-up is never a step backwards
+    assert progress.update.call_args_list[-1][0][0] > 0
+
+
+@mock.patch('requests.Session.get')
+@mock.patch('requests.Session.post')
+def test_debug_dump_script_name_in_use(mock_post, mock_get, tmpdir):
+    """A script whose file name is already in the dump is not fetched."""
+    # The area page also loads a master.js from another folder
+    area = _read(join(XGEN_VAR_DIR, 'area.htm')).replace(
+        b'</head>', b'<script src="/other/master.js"></script></head>')
+
+    _, _, scripts = _dump(
+        mock_post, mock_get, tmpdir, _xgen_login(), {'/user/area.htm': area})
+    assert 'other/master.js' not in scripts
+    assert scripts.count('v_XG_04.01-B/master.js') == 1
+
+
+@mock.patch('requests.Session.get')
+@mock.patch('requests.Session.post')
+def test_debug_dump_extra_pages(mock_post, mock_get, tmpdir):
+    """Each panel type's dump asks only for the pages its menu uses."""
+    # Every page that is only asked for on some panel types
+    extra = (
+        'user/api/events.cgi', 'user/doors.htm', 'user/dstate.json',
+        'user/history.xml', 'protect/config7.htm', 'muser/textnames.htm',
+    )
+
+    def _asked(posts):
+        """Return which of the extra pages were asked for, with data."""
+        return {p: d for p, d in posts if p in extra}
+
+    # xGen reads its newest history events
+    files, posts, _ = _dump(
+        mock_post, mock_get, tmpdir.mkdir('xgen'), _xgen_login())
+    assert 'events.json' in files
+    assert sorted(_asked(posts)) == ['user/api/events.cgi']
+    events = _asked(posts)['user/api/events.cgi']
+    assert events.pop('sess')
+    assert events == {'count': 10, 'start': 65535, 'type': 0}
+
+    # xGen8 also reads its access control doors
+    files, posts, _ = _dump(
+        mock_post, mock_get, tmpdir.mkdir('xgen8'), _xgen8_login())
+    assert 'doors.htm' in files
+    assert 'dstate.json' in files
+    assert sorted(_asked(posts)) == [
+        'user/api/events.cgi', 'user/doors.htm', 'user/dstate.json']
+
+    # ComNav reads its newest history event and the installer pages
+    files, posts, _ = _dump(
+        mock_post, mock_get, tmpdir.mkdir('comnav'), _comnav_login())
+    for name in ('history.xml', 'config1.htm', 'config7.htm',
+                 'textnames.htm'):
+        assert name in files
+
+    assert sorted(_asked(posts)) == [
+        'muser/textnames.htm', 'protect/config7.htm', 'user/history.xml']
+    history = _asked(posts)['user/history.xml']
+    assert history.pop('sess')
+    assert history == {'event': 65535}
+
+    # ZeroWire's menu was never captured, so nothing extra is asked for
+    files, posts, _ = _dump(
+        mock_post, mock_get, tmpdir.mkdir('zerowire'), _zerowire_login())
+    assert _asked(posts) == {}
+
+    # Pages a user can't open are skipped without logging in again
+    files, posts, _ = _dump(
+        mock_post, mock_get, tmpdir.mkdir('refused'), _comnav_login(),
+        refuse=('protect/config1.htm', 'protect/config7.htm',
+                'muser/textnames.htm', 'user/history.xml'))
+    for name in ('history.xml', 'config1.htm', 'config7.htm',
+                 'textnames.htm'):
+        assert name not in files
+
+    assert 'zones.htm' in files
+    assert not [p for p, _ in posts if p == 'login.cgi']
 
 
 @mock.patch('requests.Session.post')
