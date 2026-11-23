@@ -30,6 +30,7 @@ from unittest import mock
 import requests
 
 from ultrasync import UltraSync
+from ultrasync.common import ALARM_SCENES
 from ultrasync.common import AlarmScene
 from ultrasync.common import CNPanelFunction
 from ultrasync.common import NX595EVendor
@@ -176,6 +177,61 @@ def test_zerowire_set_alarm_unsupported_scenes(mock_post):
         assert uobj.set_alarm(areas=1, state=state) is False
 
     # Nothing was sent, so the area was not disarmed
+    assert mock_post.call_count == 0
+
+
+@mock.patch('requests.Session.post')
+def test_xgen_set_alarm(mock_post):
+    """xGen and xGen8 arm like ZeroWire and refuse fire, medical and panic."""
+    uobj = _zerowire(mock_post)
+
+    for vendor in (NX595EVendor.XGEN, NX595EVendor.XGEN8):
+        uobj.vendor = vendor
+
+        for state, fnum in (
+                (AlarmScene.STAY, XGZWPanelFunction.AREA_STAY),
+                (AlarmScene.AWAY, XGZWPanelFunction.AREA_AWAY),
+                (AlarmScene.DISARMED, XGZWPanelFunction.AREA_DISARM)):
+
+            mock_post.side_effect = (_resp(JSON_OK),)
+            assert uobj.set_alarm(areas=1, state=state) is True
+            assert _sent(mock_post) == {
+                'sess': uobj.session_id, 'start': 0, 'mask': 1,
+                'fnum': fnum}
+
+        # Nothing is sent for the scenes these panels have no command for
+        mock_post.reset_mock()
+        for state in (
+                AlarmScene.FIRE, AlarmScene.MEDICAL, AlarmScene.PANIC):
+            assert uobj.set_alarm(areas=1, state=state) is False
+        assert mock_post.call_count == 0
+
+
+@mock.patch('requests.Session.post')
+def test_new_scene_is_never_sent_as_disarm(mock_post):
+    """A scene with no command of its own is refused on every panel."""
+    scenes = ALARM_SCENES + ('night', )
+
+    for login in (_zerowire, _comnav):
+        uobj = login(mock_post)
+        mock_post.side_effect = None
+        mock_post.return_value = _resp(XML_OK)
+        with mock.patch('ultrasync.main.ALARM_SCENES', scenes):
+            assert uobj.set_alarm(areas=1, state='night') is False
+        assert mock_post.call_count == 0
+
+
+@mock.patch('requests.Session.post')
+def test_unknown_vendor_sends_nothing(mock_post):
+    """A panel type the library does not know is never sent a command."""
+    uobj = _zerowire(mock_post)
+    uobj.vendor = 'unknown'
+    mock_post.side_effect = None
+    mock_post.return_value = _resp(XML_OK)
+
+    assert uobj.set_alarm(areas=1, state=AlarmScene.DISARMED) is False
+    assert uobj.set_chime(areas=1, state=True) is False
+    assert uobj.set_zone_bypass(zone=1, state=True) is False
     assert mock_post.call_count == 0
 
 

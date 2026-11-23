@@ -693,7 +693,7 @@ class UltraSync(UltraSyncConfig):
 
                 rtype = HubResponseType.JSON
 
-            else:  # self.vendor is NX595EVendor.COMNAV
+            elif self.vendor == NX595EVendor.COMNAV:
 
                 payload.update({
                     'comm': 80,
@@ -726,12 +726,30 @@ class UltraSync(UltraSyncConfig):
                         'data2': CNPanelFunction.AREA_PANIC,
                     })
 
-                else:   # AlarmScene.DISARMED
+                elif state == AlarmScene.DISARMED:
                     payload.update({
                         'data2': CNPanelFunction.AREA_DISARM,
                     })
 
+                else:
+                    # A scene with no ComNav command of its own is refused,
+                    # so it can never be sent as a disarm by mistake.
+                    logger.error(
+                        '{} is not supported on {} panels'.format(
+                            state, self.vendor))
+                    has_error = True
+                    continue
+
                 rtype = HubResponseType.XML
+
+            else:
+                # Each panel type uses its own commands.  Send nothing to a
+                # panel type this library does not know.
+                logger.error(
+                    'Alarm scenes not implemented for vendor {}'.format(
+                        self.vendor))
+                has_error = True
+                continue
 
             # Send our response
             response = self.__get(
@@ -807,7 +825,7 @@ class UltraSync(UltraSyncConfig):
 
                 rtype = HubResponseType.JSON
 
-            else:  # self.vendor is NX595EVendor.COMNAV
+            elif self.vendor == NX595EVendor.COMNAV:
 
                 # Nothing to send when the chime is already as requested,
                 # since a toggle would turn it the wrong way.
@@ -825,6 +843,15 @@ class UltraSync(UltraSyncConfig):
                 })
 
                 rtype = HubResponseType.XML
+
+            else:
+                # Each panel type uses its own commands.  Send nothing to a
+                # panel type this library does not know.
+                logger.error(
+                    'Chime not implemented for vendor {}'.format(
+                        self.vendor))
+                has_error = True
+                continue
 
             # Send our response
             response = self.__get(
@@ -874,7 +901,7 @@ class UltraSync(UltraSyncConfig):
             response = self.__get(
                 '/user/zonefunction.cgi', payload=payload)
 
-        elif self.vendor in (NX595EVendor.COMNAV):
+        elif self.vendor == NX595EVendor.COMNAV:
             # Call comnav_process_zones to update can_bypass attribute
             self.comnav_process_zones
 
@@ -897,7 +924,7 @@ class UltraSync(UltraSyncConfig):
             response = self.__get(
                 '/user/zonefunction.cgi', payload=payload)
 
-        else:   # self.vendor is NX595EVendor.{ZEROWIRE, XGEN}
+        else:   # self.vendor is NX595EVendor.XGEN, or one we don't know
 
             logger.error(
                 'Bypass not implemented for vendor {}'.format(self.vendor))
