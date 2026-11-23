@@ -676,10 +676,20 @@ class UltraSync(UltraSyncConfig):
                         'fnum': XGZWPanelFunction.AREA_AWAY,
                     })
 
-                else:   # AlarmScene.DISARMED
+                elif state == AlarmScene.DISARMED:
                     payload.update({
                         'fnum': XGZWPanelFunction.AREA_DISARM,
                     })
+
+                else:
+                    # Fire, medical and panic have no known function number
+                    # on these panels.  Refuse them, because sending the
+                    # disarm function instead would disarm the area.
+                    logger.error(
+                        '{} is not supported on {} panels'.format(
+                            state, self.vendor))
+                    has_error = True
+                    continue
 
                 rtype = HubResponseType.JSON
 

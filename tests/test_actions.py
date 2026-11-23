@@ -168,6 +168,18 @@ def test_set_alarm_bad_input(mock_post):
 
 
 @mock.patch('requests.Session.post')
+def test_zerowire_set_alarm_unsupported_scenes(mock_post):
+    """Fire, medical and panic are refused instead of disarming the area."""
+    uobj = _zerowire(mock_post)
+
+    for state in (AlarmScene.FIRE, AlarmScene.MEDICAL, AlarmScene.PANIC):
+        assert uobj.set_alarm(areas=1, state=state) is False
+
+    # Nothing was sent, so the area was not disarmed
+    assert mock_post.call_count == 0
+
+
+@mock.patch('requests.Session.post')
 def test_set_alarm_no_login(mock_post):
     """Actions fail when the panel can not be logged into."""
     mock_post.return_value = _resp(status_code=500)
