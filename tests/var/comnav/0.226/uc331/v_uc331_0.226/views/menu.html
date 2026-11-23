@@ -1,0 +1,2 @@
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=windows-1252"></head><body><div ng-controller="MenuController"> <div class="container-fluid ban" ng-if="desktop_mode"> <button type="button" class="mnu-btn" ng-click="MenuShow()">{{"Menu" | trl}}</button><p>{{device_region == region_eu ? "NX-596" : "ComNav-3G"}}</p></div> </div> <div id="mnu"> <ul class="nav"> <li ng-repeat="m in menu track by $index"><a href="http://192.168.1.29/uc331/v_uc331_0.226/views/%7B%7Bm.link%7D%7D">{{m.title}}</a></li> </ul> </div></body></html>

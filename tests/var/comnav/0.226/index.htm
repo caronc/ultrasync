@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+  <head>
+    <meta http-equiv=Pragma content=no-cache>
+    <meta charset=utf-8>
+    <link rel=stylesheet href='custom.css'>
+    <script src='uc331/v_uc331_0.226/scripts/languages/lang_en.js'></script>
+    <script src='uc331/v_uc331_0.226/scripts/languages/lang_nl.js'></script>
+    <script src="uc331/v_uc331_0.226/scripts/controllers/lang.js"></script>
+    <script>
+      setLang("2");
+      setRegion("2");
+    </script>
+  </head>
+  <body ng-app=ngLoginApp>
+    <div class=login>
+      <form method=post action="/login.cgi" onsubmit="return true;">
+        <h1 id=login></h1><label id=username></label><input type=text name=lgname id=lgname value="" /><label id=pass></label><input type=password name=lgpin value="" />
+        <p style="padding: 10px 0px 0px 0px">
+          <font color=red></font>
+        </p><button id=sign_in type=submit></button>
+        <script>
+          document.getElementById("lgname").focus();
+          document.title = (g_device_region == 2 ? "NX-596 :: " : "ComNav-3G :: ") + trl("Secure Network");
+          document.getElementById("login").innerHTML = trl("LAN Sign in");
+          document.getElementById("username").innerHTML = trl("Enter your username:");
+          document.getElementById("pass").innerHTML = trl("Enter your password:");
+          document.getElementById("sign_in").innerHTML = trl("Sign in");
+        </script>
+      </form>
+    </div>
+  </body>
+</html>
