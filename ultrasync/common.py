@@ -43,6 +43,15 @@ class NX595EVendor(object):
     XGEN8 = 'xgen8'
 
 
+# Every panel type this library knows how to talk to
+NX595E_VENDORS = (
+    NX595EVendor.ZEROWIRE,
+    NX595EVendor.COMNAV,
+    NX595EVendor.XGEN,
+    NX595EVendor.XGEN8,
+)
+
+
 class XGZWPanelFunction(object):
     """
     Interlogix and and xGen ZeroWire Function Commands
@@ -50,7 +59,6 @@ class XGZWPanelFunction(object):
 
     AREA_DISARM = 0
     AREA_STAY = 1
-    AREA_CHIME_TOGGLE = 10
     AREA_AWAY = 15
 
     # The panel's web page sends 10 to turn chime on and 11 to turn it off

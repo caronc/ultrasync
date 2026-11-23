@@ -37,7 +37,8 @@ from datetime import timedelta
 from .common import (
     AlarmScene, AreaStatus, CNAreaBank, XGZWAreaBank, ZoneStatus,
     ZoneBank, ALARM_SCENES, AREA_STATES, ZONE_STATES, CNPanelFunction,
-    XGZWPanelFunction, NX595EVendor, AREA_STATUS_PROCESS_PRIORITY)
+    XGZWPanelFunction, NX595EVendor, NX595E_VENDORS,
+    AREA_STATUS_PROCESS_PRIORITY)
 from .config import UltraSyncConfig
 from urllib.parse import unquote
 from .logger import logger
@@ -188,7 +189,12 @@ class UltraSync(UltraSyncConfig):
             r'|(?P<xgen8>(xGen __ Secure Network_files|javascript)))).*',
             response, re.M)
         if not match:
-            # No match and/or bad login
+            # No match and/or bad login.  If the panel type was never
+            # found, the session can't be used, so drop it.  The next call
+            # then logs in again instead of using a half-set-up panel.
+            if self.vendor not in NX595E_VENDORS:
+                self.session_id = None
+
             return False
 
         # Store our path
@@ -218,6 +224,12 @@ class UltraSync(UltraSyncConfig):
         else:
             logger.error(
                 'Unsupported vendor {}'.format(match.group('vendor')))
+
+            # A panel type this library can't talk to keeps no session, so
+            # no later call can send it another panel type's requests
+            if self.vendor not in NX595E_VENDORS:
+                self.session_id = None
+
             return False
 
         logger.debug('Detected {} NX-595E, Web Interface v{}-{}'.format(
@@ -443,7 +455,7 @@ class UltraSync(UltraSyncConfig):
                 },
             })
 
-        else:  # self.vendor is NX595EVendor.COMNAV
+        elif self.vendor == NX595EVendor.COMNAV:
 
             urls.update({
                 # Used to acquire sequence
@@ -951,7 +963,9 @@ class UltraSync(UltraSyncConfig):
         if ref is None:
             ref = datetime.now()
 
-        if not max_age_sec or \
+        # Nothing read yet (a login that stopped part way) counts as
+        # out of date, the same as asking for fresh values
+        if not max_age_sec or self.__updated is None or \
                 (self.__updated + timedelta(seconds=max_age_sec)) <= ref:
             # Perform a sequence check; these trigger subsequent
             # checks if required
@@ -1085,7 +1099,7 @@ class UltraSync(UltraSyncConfig):
             # 1 to 8), so panels with more than 8 areas read the right one
             group = math.floor(x / 8)
 
-            if self.vendor is NX595EVendor.COMNAV:
+            if self.vendor == NX595EVendor.COMNAV:
                 # ComNav sends 17 values for each group of 8 areas
                 state = bank_states[group * 17:(group * 17) + 17]
 
@@ -1974,7 +1988,7 @@ class UltraSync(UltraSyncConfig):
 
         # ComNav v0.106 does not support naming of zones. Determine if
         # we're this version
-        zone_naming = False if self.vendor is NX595EVendor.COMNAV \
+        zone_naming = False if self.vendor == NX595EVendor.COMNAV \
             and float(self.version) <= 0.106 else True
 
         # Store our Zones:
@@ -1996,7 +2010,7 @@ class UltraSync(UltraSyncConfig):
         #
         # Get our Master Status
         #
-        if self.vendor is NX595EVendor.ZEROWIRE:
+        if self.vendor == NX595EVendor.ZEROWIRE:
             # It looks like this in the zone.htm response:
             #  var master = 1; # 1 if master, 0 if not
             match = re.search(
@@ -2450,7 +2464,7 @@ class UltraSync(UltraSyncConfig):
         At this time, this feature is only supported by the COMNAV panels
         """
 
-        if self.vendor is not NX595EVendor.COMNAV:
+        if self.vendor != NX595EVendor.COMNAV:
             # Only vendor that supports this right now is COMNAV
             # Silently returned a positive status
             return True
@@ -2527,7 +2541,7 @@ class UltraSync(UltraSyncConfig):
         At this time, this feature is only supported by the COMNAV panels
         """
 
-        if self.vendor is not NX595EVendor.COMNAV:
+        if self.vendor != NX595EVendor.COMNAV:
             # Only vendor that supports this right now is COMNAV
             # Silently returned a positive status
             return True
@@ -2572,7 +2586,7 @@ class UltraSync(UltraSyncConfig):
         if not self.session_id and not self.login():
             return False
 
-        if self.vendor is not NX595EVendor.COMNAV:
+        if self.vendor != NX595EVendor.COMNAV:
             # Only vendor that supports this right now is COMNAV
             logger.error(
                 'Output control not implemented for vendor {}'.format(
