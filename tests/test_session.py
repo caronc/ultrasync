@@ -34,6 +34,7 @@ from zipfile import ZipFile
 import requests
 
 from ultrasync import UltraSync
+from ultrasync.common import AlarmScene
 from ultrasync.common import NX595EVendor
 
 # Disable logging for a cleaner testing output
@@ -98,22 +99,77 @@ def test_login_failures(mock_post):
     mock_post.side_effect = (_resp(b'<html>Bad Login</html>'),)
     assert uobj.login() is False
 
-    # A session id alone is not enough; the panel type is also needed
+    # A session id alone is not enough; the panel type is also needed.
+    # The session is dropped, since it can't be used without one.
     session = b'function getSession(){return "ABCD";}\n'
     mock_post.side_effect = (_resp(session),)
     assert uobj.login() is False
+    assert uobj.session_id is None
 
-    # A panel type that is not supported
+    # A panel type that is not supported keeps no session either
+    mock_post.side_effect = (_resp(
+        session + b'<script src="/v_XX_03.02-C/status.js">'),)
+    assert uobj.login() is False
+    assert uobj.session_id is None
+
+    # A supported panel whose area details can not be read keeps its
+    # session, as it always has
+    mock_post.side_effect = (_resp(
+        session + b'<script src="/v_ZW_03.02-C/status.js">'),)
+    assert uobj.login() is False
+    assert uobj.vendor is NX595EVendor.ZEROWIRE
+    assert uobj.session_id == 'ABCD'
+
+    # Once the panel type is known, a login page without it, or with one
+    # that is not supported, keeps the session too, as it always has
+    mock_post.side_effect = (_resp(session),)
+    assert uobj.login() is False
+    assert uobj.session_id == 'ABCD'
+
     mock_post.side_effect = (_resp(
         session + b'<script src="/v_XX_03.02-C/status.js">'),)
     assert uobj.login() is False
     assert uobj.session_id == 'ABCD'
 
-    # A supported panel whose area details can not be read
-    mock_post.side_effect = (_resp(
-        session + b'<script src="/v_ZW_03.02-C/status.js">'),)
+
+@mock.patch('requests.Session.post')
+def test_unknown_panel_type_is_never_used(mock_post):
+    """Nothing is sent to a panel whose type the library does not know."""
+    area = _resp(path=join(ZEROWIRE_VAR_DIR, 'area.htm'))
+    area.content = area.content.replace(b'/v_ZW_', b'/v_QQ_')
+    mock_post.side_effect = None
+    mock_post.return_value = area
+
+    uobj = UltraSync()
     assert uobj.login() is False
-    assert uobj.vendor is NX595EVendor.ZEROWIRE
+
+    # Every call tries to log in again (one request each) and gives up
+    mock_post.reset_mock()
+    assert uobj.details() == {}
+    assert uobj.set_alarm(state=AlarmScene.DISARMED) is False
+    assert uobj.set_chime(state=True) is False
+    assert uobj.debug_dump() is False
+    assert mock_post.call_count == 4
+    for call in mock_post.call_args_list:
+        assert call[0][0] == 'http://zerowire/login.cgi'
+
+
+@mock.patch('requests.Session.post')
+def test_details_after_failed_login(mock_post):
+    """Details after a login that stopped part way fail without a crash."""
+    uobj = UltraSync()
+
+    # The areas are read, but the zones page fails
+    mock_post.side_effect = (
+        _resp(path=join(ZEROWIRE_VAR_DIR, 'area.htm')),
+        _resp(status_code=500),
+    )
+    assert uobj.login() is False
+    assert uobj.session_id
+
+    # The panel is asked for its sequence, which also fails
+    mock_post.side_effect = (_resp(status_code=500),)
+    assert uobj.details() == {}
 
 
 @mock.patch('requests.Session.post')
@@ -480,6 +536,28 @@ def _xgen8_login():
         _resp(path=join(XGEN8_VAR_DIR, 'area.htm')),
         _resp(path=join(XGEN8_VAR_DIR, 'zones.htm')),
     )
+
+
+@mock.patch('requests.Session.get')
+@mock.patch('requests.Session.post')
+def test_debug_dump_unknown_panel_type(mock_post, mock_get, tmpdir):
+    """A dump of an unknown panel type only reads pages every panel has."""
+    mock_post.side_effect = _zerowire_login()
+    uobj = UltraSync()
+    assert uobj.login() is True
+    uobj.vendor = 'unknown'
+
+    mock_post.side_effect = None
+    mock_post.return_value = _resp(b'<html>page</html>')
+    mock_get.return_value = _resp(b'var x = 1;')
+
+    path = str(tmpdir.join('panel'))
+    uobj.debug_dump(path=path)
+
+    # No ZeroWire/xGen or ComNav pages are asked for
+    assert sorted(os.listdir(path)) == [
+        'area.htm', 'config2.htm', 'history.htm', 'master.js',
+        'outputs.htm', 'status.js', 'zones.htm']
 
 
 def _dump(mock_post, mock_get, tmpdir, login, pages=None, refuse=(),
